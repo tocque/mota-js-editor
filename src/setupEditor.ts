@@ -1,14 +1,22 @@
 import { once } from "es-toolkit";
 import { loadScript } from "./utils/dom/loadScript";
 
+import { fs } from '@/scripts/fs';
+import { editor_config } from "./scripts/editor_config";
+import { editor_util_wrapper } from "./scripts/editor_util";
+import { editor_game_wrapper } from "./scripts/editor_game";
+import { editor_file, editor_file_wrapper } from "./scripts/editor_file";
+
 export const setupEditor = once(async () => {
 
+  window.fs = fs;
+  window.editor_config = editor_config;
+  window.editor_util_wrapper = editor_util_wrapper;
+  window.editor_game_wrapper = editor_game_wrapper;
+  window.editor_file_wrapper = editor_file_wrapper;
+  window.editor_file = editor_file;
+
   const scriptList = [
-    '_server/fs.js',
-    '_server/editor_config.js',
-    '_server/editor_util.js',
-    '_server/editor_game.js',
-    '_server/editor_file.js',
     '_server/editor_table.js',
     '_server/editor_mode.js',
     '_server/editor_ui.js',
