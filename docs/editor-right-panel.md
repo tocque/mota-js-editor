@@ -95,7 +95,8 @@ editor.dom.iconExpandBtn = document.getElementById('iconExpandBtn');
 ### 5. enemy48 (怪物 48x48)
 
 - 文件: `project/materials/enemy48.png`
-- 尺寸: 32x48 每图块，4方向×4帧
+- 尺寸: 32x48 每图块（宽32像素，高48像素），4方向×4帧
+- 说明: "48" 指的是图块高度为48像素，显示时会溢出格子上方16像素
 - 内容: 大尺寸怪物行走图
 
 ### 6. items (道具)
@@ -113,7 +114,8 @@ editor.dom.iconExpandBtn = document.getElementById('iconExpandBtn');
 ### 8. npc48 (NPC 48x48)
 
 - 文件: `project/materials/npc48.png`
-- 尺寸: 32x48 每图块，4方向×4帧
+- 尺寸: 32x48 每图块（宽32像素，高48像素），4方向×4帧
+- 说明: "48" 指的是图块高度为48像素，显示时会溢出格子上方16像素
 - 内容: 大尺寸 NPC 行走图
 
 ### 9. autotile (自动元件)

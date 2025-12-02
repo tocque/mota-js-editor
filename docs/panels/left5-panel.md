@@ -296,7 +296,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = {
 
 ## 注意事项
 
-1. **游戏名称**: 首次使用样板时请修改 `main.name`，系统会提示
+1. **游戏名称**: 首次使用样板时请修改 `data.main.name`（表格中显示为 `main` → `name`），系统会提示
 2. **floorIds顺序**: 列表顺序决定了楼传器中的楼层显示顺序
 3. **startFloor匹配**: 必须是 floorIds 中存在的楼层
 4. **hero.floorId**: 必须与 startFloor 一致
