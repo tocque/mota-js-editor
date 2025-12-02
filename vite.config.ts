@@ -20,7 +20,7 @@ export default defineConfig({
   },
   publicDir: 'public',
   server: {
-    port: 3000,
+    port: 1055,
     host: '127.0.0.1',
   },
   build: {

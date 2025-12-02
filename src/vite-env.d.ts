@@ -1,12 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /// <reference types="vite/client" />
 
-// 扩展 Window 接口以包含编辑器全局对象
-declare global {
-  interface Window {
-    editor: any;
-    main: any;
-    core: any;
-  }
-}
-
-export {};
+const editor: any;
+const editor_multi: any;
+const editor_blockly: any;
+const confirmColor: () => void;
