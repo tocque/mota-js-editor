@@ -1,6 +1,6 @@
-editor_table_wrapper = function (editor) {
+export const editor_table_wrapper = function (editor) {
 
-    editor_table = function () {
+    const editor_table = function () {
 
     }
 

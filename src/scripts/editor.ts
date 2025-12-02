@@ -1,3 +1,5 @@
+export const createEditor = () => {
+
 function editor() {
     this.version = "2.0";
     this.brushMod = "line";//["line","rectangle","tileset"]
@@ -226,8 +228,8 @@ editor.prototype.init = function (callback) {
                     editor_mode = editor_mode(editor);
                     editor.mode = editor_mode;
                     var canvases = document.getElementsByClassName('gameCanvas');
-                    for (var one in canvases) {
-                        canvases[one].width = canvases[one].height = core.__PIXELS__;
+                    for (const canvas of Array.from(canvases)) {
+                        canvas.width = canvas.height = core.__PIXELS__;
                     }
                     core.resetGame(core.firstData.hero, null, core.firstData.floorId, core.cloneArray(core.initStatus.maps));
                     var floorId = editor.config.get('editorLastFloorId', core.status.floorId);
@@ -1052,3 +1054,6 @@ editor.prototype.mobile_listen=function(){
 
 
 editor = new editor();
+
+return editor;
+}

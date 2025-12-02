@@ -1,4 +1,4 @@
-editor_ui_wrapper = function (editor) {
+export const editor_ui_wrapper = function (editor) {
 
     var tip=document.getElementById('tip');
     var print = function (msg, cls) {

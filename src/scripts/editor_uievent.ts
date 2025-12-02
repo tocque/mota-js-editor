@@ -1,4 +1,4 @@
-editor_uievent_wrapper = function (editor) {
+export const editor_uievent_wrapper = function (editor) {
 
     // ------ UI预览 & 地图选点相关 ------ //
 

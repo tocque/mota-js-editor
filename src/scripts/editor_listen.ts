@@ -1,4 +1,4 @@
-editor_listen_wrapper = function (editor) {
+export const editor_listen_wrapper = function (editor) {
 
     editor.constructor.prototype.listen = function () {
 

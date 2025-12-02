@@ -1,6 +1,6 @@
 
 
-editor_multi = function () {
+export const editor_multi = function () {
 
     var editor_multi = {};
 
@@ -325,7 +325,7 @@ editor_multi = function () {
             _setValue(JSON.parse(input.value) || '');
         } else {
             var num = editor_multi.indent(field);
-            eval('var tobj=' + (input.value || 'null'));
+            var tobj = eval(`(${input.value || 'null'})`);
             var tmap = {};
             var tstr = JSON.stringify(tobj, function (k, v) {
                 if (typeof (v) === typeof ('') && v.slice(0, 8) === 'function') {

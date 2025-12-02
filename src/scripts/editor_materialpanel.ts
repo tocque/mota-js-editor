@@ -1,4 +1,4 @@
-editor_materialpanel_wrapper = function (editor) {
+export const editor_materialpanel_wrapper = function (editor) {
 
     // 由于历史遗留原因, 以下变量作为全局变量使用
     // selectBox

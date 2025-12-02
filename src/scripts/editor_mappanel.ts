@@ -1,4 +1,4 @@
-editor_mappanel_wrapper = function (editor) {
+export const editor_mappanel_wrapper = function (editor) {
 
     // 暂时先 注释+分类 内部函数未完成重构
 

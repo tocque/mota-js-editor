@@ -1,4 +1,4 @@
-editor_mode = function (editor) {
+export const editor_mode = function (editor) {
     var core = editor.core;
 
     function editor_mode() {

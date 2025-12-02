@@ -1,4 +1,4 @@
-editor_datapanel_wrapper = function (editor) {
+export const editor_datapanel_wrapper = function (editor) {
 
     // 此文件内的内容仅做了分类, 未仔细整理函数
 

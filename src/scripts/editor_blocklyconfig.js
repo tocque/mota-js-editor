@@ -1,8 +1,3 @@
-editor_blocklyconfig=(function(){
-// start mark sfergsvae
-
-
-
 (function(){
   var getCategory = function(name,custom){
     for(var node of document.getElementById('toolbox').children) {
@@ -698,8 +693,3 @@ function omitedcheckUpdateFunction(event) {
     return xmlText.join('');
   }
 })();
-
-
-
-// end mark sfergsvae
-}).toString().split('// start mark sfergsvae')[1].split('// end mark sfergsvae')[0]

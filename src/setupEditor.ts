@@ -6,6 +6,26 @@ import { editor_config } from "./scripts/editor_config";
 import { editor_util_wrapper } from "./scripts/editor_util";
 import { editor_game_wrapper } from "./scripts/editor_game";
 import { editor_file, editor_file_wrapper } from "./scripts/editor_file";
+import { editor_mode } from "./scripts/editor_mode";
+import { editor_table_wrapper } from "./scripts/editor_table";
+import { editor_ui_wrapper } from "./scripts/editor_ui";
+import { editor_uievent_wrapper } from "./scripts/editor_uievent";
+import { editor_mappanel_wrapper } from "./scripts/editor_mappanel";
+import { editor_datapanel_wrapper } from "./scripts/editor_datapanel";
+import { editor_materialpanel_wrapper } from "./scripts/editor_materialpanel";
+import { editor_listen_wrapper } from "./scripts/editor_listen";
+import localforage from "localforage";
+import { MotaActionParser } from "./scripts/MotaActionParser";
+import { editor_multi } from "./scripts/editor_multi";
+import "./scripts/blockly";
+import { editor_blockly } from "./scripts/editor_blockly";
+import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
+import * as LZString from "lz-string";
+import CodeMirror from "codemirror";
+import 'codemirror/mode/javascript/javascript';
+import 'codemirror/lib/codemirror.css';
+import { createEditor } from "./scripts/editor";
+import Awesomplete from "awesomplete";
 
 export const setupEditor = once(async () => {
 
@@ -15,30 +35,27 @@ export const setupEditor = once(async () => {
   window.editor_game_wrapper = editor_game_wrapper;
   window.editor_file_wrapper = editor_file_wrapper;
   window.editor_file = editor_file;
+  window.editor_table_wrapper = editor_table_wrapper;
+  window.editor_mode = editor_mode;
+  window.editor_ui_wrapper = editor_ui_wrapper;
+  window.editor_uievent_wrapper = editor_uievent_wrapper;
+  window.editor_mappanel_wrapper = editor_mappanel_wrapper;
+  window.editor_datapanel_wrapper = editor_datapanel_wrapper;
+  window.editor_materialpanel_wrapper = editor_materialpanel_wrapper;
+  window.editor_listen_wrapper = editor_listen_wrapper;
+  window.LZString = LZString;
+  window.localforage = localforage;
+  window.editor = createEditor();
+  window.editor_multi = editor_multi;
+  window.MotaActionParser = MotaActionParser;
+  window.editor_blockly = editor_blockly;
+  window.editor_blocklyconfig = editor_blocklyconfig;
+  window.CodeMirror = CodeMirror;
+  window.Awesomplete = Awesomplete;
 
   const scriptList = [
-    '_server/editor_table.js',
-    '_server/editor_mode.js',
-    '_server/editor_ui.js',
-    '_server/editor_uievent.js',
-    '_server/editor_mappanel.js',
-    '_server/editor_datapanel.js',
-    '_server/editor_materialpanel.js',
-    '_server/editor_listen.js',
-    'libs/thirdparty/lz-string.min.js',
-    'libs/thirdparty/localforage.min.js',
     'libs/thirdparty/zip.min.js',
-    '_server/editor.js',
-    '_server/editor_multi.js',
     '_server/blockly/Converter.bundle.min.js',
-    '_server/blockly/blockly_compressed.js',
-    '_server/blockly/blocks_compressed.js',
-    '_server/blockly/javascript_compressed.js',
-    '_server/blockly/zh-hans.js',
-    '_server/MotaActionParser.js',
-    '_server/editor_blocklyconfig.js',
-    '_server/editor_blockly.js',
-    '_server/CodeMirror/codeMirror.bundle.min.js',
     '_server/CodeMirror/beautify.min.js',
     '_server/CodeMirror/jshint.min.js',
     '_server/CodeMirror/codeMirror.plugin.min.js',
@@ -46,7 +63,6 @@ export const setupEditor = once(async () => {
     '_server/CodeMirror/defs.js',
     '_server/CodeMirror/tern.min.js',
     '_server/thirdparty/color.all.min.js',
-    '_server/thirdparty/awesomplete.min.js',
     '_server/thirdparty/caret-position.js',
     '_server/thirdparty/jsColor.js'
   ];
