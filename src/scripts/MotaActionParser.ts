@@ -1427,8 +1427,8 @@ MotaActionFunctions.parse = function(obj,type) {
     });
   } catch (e) { }
   MotaActionFunctions.workspace().clear();
-  xml_text = MotaActionFunctions.actionParser.parse(obj, type || 'event');
-  xml = Blockly.Xml.textToDom('<xml>' + xml_text + '</xml>');
+  const xml_text = MotaActionFunctions.actionParser.parse(obj, type || 'event');
+  const xml = Blockly.Xml.textToDom('<xml>' + xml_text + '</xml>');
   Blockly.Xml.domToWorkspace(xml, MotaActionFunctions.workspace());
 }
 

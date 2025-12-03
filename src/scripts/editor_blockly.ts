@@ -88,7 +88,7 @@ export const editor_blockly = function () {
         var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
         Blockly.JavaScript.INFINITE_LOOP_TRAP = null;
         try {
-            eval('obj=' + code);
+            const obj = eval(`(${code})`);
             console.log(obj);
         } catch (e) {
             alert(e);
@@ -102,9 +102,9 @@ export const editor_blockly = function () {
 
     editor_blockly.parse = function () {
         MotaActionFunctions.parse(
-            eval('obj=' + codeAreaHL.getValue().replace(/[<>&]/g, function (c) {
+            eval('(' + codeAreaHL.getValue().replace(/[<>&]/g, function (c) {
                 return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c];
-            }).replace(/\\(r|f|i|c|d|e|g|z)/g, '\\\\$1')),
+            }).replace(/\\(r|f|i|c|d|e|g|z)/g, '\\\\$1') + ')'),
             editor_blockly.isCommonEntry() ? 'common' : editor_blockly.entryType
         );
     }
@@ -201,7 +201,7 @@ export const editor_blockly = function () {
         }
         var code = Blockly.JavaScript.workspaceToCode(editor_blockly.workspace);
         code = code.replace(/\\(i|c|d|e|g|z)/g, '\\\\$1');
-        eval('var obj=' + code);
+        const obj = eval(`(${code})`);
         if (this.checkAsync(obj) && confirm("警告！存在不等待执行完毕的事件但却没有用【等待所有异步事件处理完毕】来等待" +
             "它们执行完毕，这样可能会导致录像检测系统出问题。\n你要返回修改么？")) return;
 
@@ -303,7 +303,7 @@ export const editor_blockly = function () {
             }
 
             var code = "[" + Blockly.JavaScript.blockToCode(b).replace(/\\(i|c|d|e|g|z)/g, '\\\\$1') + "]";
-            eval("var obj=" + code);
+            const obj = eval(code);
             if (obj.length == 0) return true;
             obj = obj[0];
             switch (b.type) {
