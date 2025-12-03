@@ -1,6 +1,33 @@
-import type { FC } from "react";
+import { useEffect, useState, type FC } from "react";
 
 export const MapEditor: FC = () => {
+  const [tipMessage, setTipMessage] = useState('');
+  const [tipClass, setTipClass] = useState('');
+
+  const print = (msg: string, cls: string) => {
+    if (msg === '') {
+      setTipMessage('');
+      setTipClass('');
+      return;
+    }
+    setTipMessage(msg);
+    setTipClass(cls);
+  }
+
+  useEffect(() => {
+    window.printf = function (msg) {
+        selectBox.isSelected(false);
+        print(msg, 'successText');
+    }
+    window.printe = function (msg) {
+        selectBox.isSelected(false);
+        print(msg, 'warnText');
+    }
+    window.printi = function (msg) {
+        print(msg, 'infoText');
+    }
+  }, []);
+
   return (
     <>
       <div id="mid">
@@ -12,7 +39,9 @@ export const MapEditor: FC = () => {
           <canvas className="gameCanvas" id="eui" style={{ zIndex: 100 }} />
         </div>
         <div className="tools">
-          <div id="tip" />
+          <div id="tip">
+            {tipMessage && <p className={tipClass}>{tipMessage}</p>}
+          </div>
           <select id="editModeSelect" style={{ fontSize: 12 }}>
             <option value="map">地图编辑(Z)</option>
             <option value="loc">地图选点(X)</option>

@@ -1,26 +1,5 @@
 export const editor_ui_wrapper = function (editor) {
 
-    var tip=document.getElementById('tip');
-    var print = function (msg, cls) {
-        if (msg == '') {
-            tip.innerHTML = '';
-            return;
-        }
-        tip.innerHTML = '<p class="'+cls+'">' + msg + "</p>";
-    }
-
-    window.printf = function (msg) {
-        selectBox.isSelected(false);
-        print(msg, 'successText');
-    }
-    window.printe = function (msg) {
-        selectBox.isSelected(false);
-        print(msg, 'warnText');
-    }
-    window.printi = function (msg) {
-        print(msg, 'infoText');
-    }
-
     editor.uifunctions.showBlockInfo = function (value) {
         if (value == 0) {
             printi("当前选择为清除块，可擦除地图上块");
