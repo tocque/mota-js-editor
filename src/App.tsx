@@ -1,11 +1,16 @@
 import { useEffect, type FC } from "react";
 import { setupEditor } from "./setupEditor";
 import { Workbench } from "./Workbench";
+import { GameDataStore } from "./stores/GameDataStore";
 
 const App: FC = () => {
 
+  const { setGameInitialized } = GameDataStore.useStore();
+
   useEffect(() => {
-    setupEditor();
+    setupEditor().then(() => {
+      setGameInitialized(true);
+    });
   }, []);
 
   return (
