@@ -22,20 +22,6 @@ export const editor_datapanel_wrapper = function (editor) {
     ///////////////////////////////////////////////////////////////////////
 
 
-    // 添加自动事件页，无需双击
-    editor.uifunctions.addAutoEvent = function () {
-        if (editor_mode.mode != 'loc') return false;
-        var newid = '2';
-        var ae = editor.currentFloorData.autoEvent[editor_mode.pos.x + ',' + editor_mode.pos.y];
-        if (ae != null) {
-            var testid;
-            for (testid = 2; Object.hasOwnProperty.call(ae, testid); testid++);
-            newid = testid + '';
-        }
-        editor_mode.addAction(['add', "['autoEvent']['" + newid + "']", null]);
-        editor_mode.onmode('save');
-    }
-
 
 
 
@@ -77,112 +63,9 @@ export const editor_datapanel_wrapper = function (editor) {
 
 
     editor.uifunctions.changeFloorId_func = function () {
-
-        editor.dom.changeFloorId.children[1].onclick = function () {
-            var floorId = editor.dom.changeFloorId.children[0].value;
-            if (floorId) {
-                if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(floorId)) {
-                    printe("楼层名 " + floorId + " 不合法！请使用字母、数字、下划线，且不能以数字开头！");
-                    return;
-                }
-                if (main.floorIds.indexOf(floorId) >= 0) {
-                    printe("楼层名 " + floorId + " 已存在！");
-                    return;
-                }
-                var currentFloorId = editor.currentFloorId;
-                editor.currentFloorId = floorId;
-                editor.currentFloorData.floorId = floorId;
-                editor.file.saveFloorFile(function (err) {
-                    if (err) {
-                        printe(err);
-                        throw (err);
-                    }
-                    core.floorIds[core.floorIds.indexOf(currentFloorId)] = floorId;
-                    editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
-                        if (objs_.slice(-1)[0] != null) {
-                            printe(objs_.slice(-1)[0]);
-                            throw (objs_.slice(-1)[0])
-                        }
-                        alert("修改floorId成功，需要刷新编辑器生效。\n请注意，原始的楼层文件没有删除，请根据需要手动删除。");
-                        window.location.reload();
-                    });
-                });
-            } else {
-                printe('请输入要修改到的floorId');
-            }
-        }
     }
 
     editor.uifunctions.changeFloorSize_func = function () {
-        var children = editor.dom.changeFloorSize.children;
-        children[4].onclick = function () {
-            var width = parseInt(children[0].value);
-            var height = parseInt(children[1].value);
-            var x = parseInt(children[2].value);
-            var y = parseInt(children[3].value);
-            if (!(width <= 128 && height <= 128 && x >= 0 && y >= 0)) {
-                printe("参数错误！宽高不得大于128，偏移量不得小于0");
-                return;
-            }
-            var currentFloorData = editor.currentFloorData;
-            var currWidth = currentFloorData.width;
-            var currHeight = currentFloorData.height;
-            if (width < currWidth) x = -x;
-            if (height < currHeight) y = -y;
-            // Step 1:创建一个新的地图
-            var newFloorData = core.clone(currentFloorData);
-            newFloorData.width = width;
-            newFloorData.height = height;
-
-            // Step 2:更新map, bgmap和fgmap
-            editor.dom.maps.forEach(function (name) {
-                newFloorData[name] = [];
-                if (currentFloorData[name] && currentFloorData[name].length > 0) {
-                    for (var j = 0; j < height; ++j) {
-                        newFloorData[name][j] = [];
-                        for (var i = 0; i < width; ++i) {
-                            var oi = i - x;
-                            var oj = j - y;
-                            if (oi >= 0 && oi < currWidth && oj >= 0 && oj < currHeight) {
-                                newFloorData[name][j].push(currentFloorData[name][oj][oi]);
-                            } else {
-                                newFloorData[name][j].push(0);
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Step 3:更新所有坐标
-            ["events", "beforeBattle", "afterBattle", "afterGetItem", "afterOpenDoor", "changeFloor", "autoEvent", "cannotMove"].forEach(function (name) {
-                newFloorData[name] = {};
-                if (!currentFloorData[name]) return;
-                for (var loc in currentFloorData[name]) {
-                    var oxy = loc.split(','), ox = parseInt(oxy[0]), oy = parseInt(oxy[1]);
-                    var nx = ox + x, ny = oy + y;
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        newFloorData[name][nx+","+ny] = core.clone(currentFloorData[name][loc]);
-                    }
-                }
-            });
-
-            // Step 4:上楼点&下楼点
-            ["upFloor", "downFloor"].forEach(function (name) {
-                if (newFloorData[name] && newFloorData[name].length == 2) {
-                    newFloorData[name][0]+=x;
-                    newFloorData[name][1]+=y;
-                }
-            });
-
-            editor.file.saveFloor(newFloorData, function (err) {
-                if (err) {
-                    printe(err);
-                    throw(err)
-                }
-                ;alert('地图更改大小成功，即将刷新地图...\n请检查所有点的事件是否存在问题。');
-                window.location.reload();
-            });
-        }
     }
 
 

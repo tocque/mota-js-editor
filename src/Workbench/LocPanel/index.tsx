@@ -1,11 +1,26 @@
 export const LocPanel = () => {
+
+  // 添加自动事件页，无需双击
+  const addAutoEvent = () => {
+      if (editor_mode.mode != 'loc') return false;
+      let newid = '2';
+      const ae = editor.currentFloorData.autoEvent[editor_mode.pos.x + ',' + editor_mode.pos.y];
+      if (ae != null) {
+          let testid;
+          for (testid = 2; Object.hasOwnProperty.call(ae, testid); testid++);
+          newid = testid + '';
+      }
+      editor_mode.addAction(['add', "['autoEvent']['" + newid + "']", null]);
+      editor_mode.onmode('save');
+  }
+
   return (
     <div id="left2" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
       {/* loc */}
       <h3 className="leftTabHeader">
         地图选点&nbsp;&nbsp;
         <button onClick={() => editor.mode.onmode('save')}>保存</button>&nbsp;&nbsp;
-        <button onClick={() => editor.uifunctions.addAutoEvent()}>
+        <button onClick={() => addAutoEvent()}>
           添加自动事件页
         </button>
         &nbsp;&nbsp;
