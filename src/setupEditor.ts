@@ -71,9 +71,13 @@ export const setupEditor = once(async () => {
     await loadScript(script);
   }
 
-  editor.init(() => {
-    editor.listen();
-    editor.mode_listen();
-    editor.mobile_listen();
+  await new Promise<void>((resolve) => {
+    editor.init(() => {
+      resolve();
+    });
   });
+
+  editor.listen();
+  editor.mode_listen();
+  editor.mobile_listen();
 });
