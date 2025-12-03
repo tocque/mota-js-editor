@@ -1,6 +1,5 @@
 import { batchCreateMapFiles } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
-import { isNil } from "es-toolkit";
 import { useState, type FC } from "react";
 
 interface BatchCreateMapsFormProps {
@@ -28,7 +27,7 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
     if (!newFloorIds) return;
     const from = parseInt(newMapsFrom),
       to = parseInt(newMapsTo);
-    if (!core.isset(from) || !core.isset(to) || from > to) {
+    if (Number.isNaN(from) || Number.isNaN(to) || from > to) {
       printe("请输入有效的起始和终止楼层");
       return;
     }
@@ -62,7 +61,7 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
 
     const width = parseInt(newMapsWidth);
     const height = parseInt(newMapsHeight);
-    if (isNil(width) || !isNil(height) || width > 128 || height > 128) {
+    if (Number.isNaN(width) || !Number.isNaN(height) || width > 128 || height > 128) {
       printe("新建地图的宽高都不得大于128");
       return;
     }

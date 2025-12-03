@@ -2,7 +2,6 @@ import { createMapFile } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
 import { useRef, useState, type FC } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
-import { isNil } from "es-toolkit";
 
 export const MapPanel: FC = () => {
   const [poutValue, setPoutValue] = useState("");
@@ -160,7 +159,7 @@ export const MapPanel: FC = () => {
     }
     const width = parseInt(newMapWidth);
     const height = parseInt(newMapHeight);
-    if (isNil(width) || isNil(height) || width > 128 || height > 128) {
+    if (Number.isNaN(width) || Number.isNaN(height) || width > 128 || height > 128) {
       printe("新建地图的宽高都不得大于128");
       return;
     }
