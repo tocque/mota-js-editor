@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { MapPanel } from "./MapPanel";
 import { AppendPicPanel } from "./AppendPicPanel";
 import { LocPanel } from "./LocPanel";
-import { EnemyItemPanel } from "./EnemyItemPanel";
+import { PrefabPanel } from "./PrefabPanel";
 import { FloorPanel } from "./FloorPanel";
 import { TowerPanel } from "./TowerPanel";
 import { EventsEditor } from "./EventsEditor";
@@ -20,7 +20,7 @@ export const Workbench: FC = () => {
       <MapPanel />
       <AppendPicPanel />
       <LocPanel />
-      <EnemyItemPanel />
+      <PrefabPanel />
       <FloorPanel />
       <TowerPanel />
       <EventsEditor />
