@@ -1,8 +1,15 @@
 import { batchCreateMapFiles } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
+import { isNil } from "es-toolkit";
 import { useState, type FC } from "react";
 
-export const BatchCreateMapsForm: FC = () => {
+interface BatchCreateMapsFormProps {
+  visible: boolean;
+}
+
+export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
+  const { visible } = props;
+
   const [newMapsWidth, setNewMapsWidth] = useState("");
   const [newMapsHeight, setNewMapsHeight] = useState("");
   const [newFloorIds, setNewFloorIds] = useState("MT${i}");
@@ -55,7 +62,7 @@ export const BatchCreateMapsForm: FC = () => {
 
     const width = parseInt(newMapsWidth);
     const height = parseInt(newMapsHeight);
-    if (!core.isset(width) || !core.isset(height) || width > 128 || height > 128) {
+    if (isNil(width) || !isNil(height) || width > 128 || height > 128) {
       printe("新建地图的宽高都不得大于128");
       return;
     }
@@ -82,7 +89,7 @@ export const BatchCreateMapsForm: FC = () => {
   };
 
   return (
-    <div id="newFloors" style={{ display: "none" }}>
+    <div id="newFloors" style={{ display: visible ? "block" : "none" }}>
       <span style={{ verticalAlign: "bottom" }}>楼层ID格式: </span>
       <input 
         id="newFloorIds" 

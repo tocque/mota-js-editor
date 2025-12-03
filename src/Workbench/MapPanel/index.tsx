@@ -1,7 +1,8 @@
 import { createMapFile } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
-import { useEffect, useRef, useState, type FC } from "react";
+import { useRef, useState, type FC } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
+import { isNil } from "es-toolkit";
 
 export const MapPanel: FC = () => {
   const [poutValue, setPoutValue] = useState("");
@@ -9,6 +10,7 @@ export const MapPanel: FC = () => {
   const [newMapHeight, setNewMapHeight] = useState("");
   const [newFileName, setNewFileName] = useState("");
   const [newMapStatus, setNewMapStatus] = useState(true);
+  const [batchCreateMapsFormVisible, setBatchCreateMapsFormVisible] = useState(false);
 
   const poutRef = useRef<HTMLTextAreaElement>(null);
 
@@ -158,7 +160,7 @@ export const MapPanel: FC = () => {
     }
     const width = parseInt(newMapWidth);
     const height = parseInt(newMapHeight);
-    if (!core.isset(width) || !core.isset(height) || width > 128 || height > 128) {
+    if (isNil(width) || isNil(height) || width > 128 || height > 128) {
       printe("新建地图的宽高都不得大于128");
       return;
     }
@@ -185,15 +187,9 @@ export const MapPanel: FC = () => {
     });
   }
 
-  useEffect(() => {
-
-    const newMaps = document.getElementById('newMaps');
-    const newFloors = document.getElementById('newFloors');
-    newMaps.onclick = function () {
-      if (newFloors.style.display == 'none') newFloors.style.display = 'block';
-      else newFloors.style.display = 'none';
-    }
-  }, []);
+  const toggleBatchCreateMapsForm = () => {
+    setBatchCreateMapsFormVisible(!batchCreateMapsFormVisible);
+  }
 
   return (
     <div id="left" style={{ zIndex: -1, opacity: 0 }}>
@@ -251,8 +247,8 @@ export const MapPanel: FC = () => {
           <input type="button" defaultValue="清除地图" id="clearMapButton" onClick={clearMap} />
           <input type="button" defaultValue="删除地图" id="deleteMap" onClick={deleteMap} />
         </div>
-        <input type="button" defaultValue="批量创建空白地图 ↓" id="newMaps" />
-        <BatchCreateMapsForm />
+        <input type="button" defaultValue="批量创建空白地图 ↓" id="newMaps" onClick={toggleBatchCreateMapsForm} />
+        <BatchCreateMapsForm visible={batchCreateMapsFormVisible} />
       </div>
     </div>
   );
