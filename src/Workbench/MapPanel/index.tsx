@@ -1,6 +1,6 @@
 import { createMapFile } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
-import { useRef, useState, type FC } from "react";
+import { type FC, useRef, useState } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
 
 export const MapPanel: FC = () => {
@@ -18,58 +18,58 @@ export const MapPanel: FC = () => {
     setNewMapHeight(core.__SIZE__);
   });
 
-  const formatArr = function () {
-    let formatArrStr = '';
+  const formatArr = function() {
+    let formatArrStr = "";
 
     const si = editor.map.length, sk = editor.map[0].length;
-    if (poutValue.split(/\D+/).join(' ').trim().split(' ').length != si * sk) return false;
-    const arr = poutValue.replace(/\s+/g, '').split('],[');
+    if (poutValue.split(/\D+/).join(" ").trim().split(" ").length != si * sk) return false;
+    const arr = poutValue.replace(/\s+/g, "").split("],[");
 
     if (arr.length != si) return;
     for (let i = 0; i < si; i++) {
       let a = [];
-      formatArrStr += '[';
-      if (i == 0 || i == si - 1) a = arr[i].split(/\D+/).join(' ').trim().split(' ');
+      formatArrStr += "[";
+      if (i == 0 || i == si - 1) a = arr[i].split(/\D+/).join(" ").trim().split(" ");
       else a = arr[i].split(/\D+/);
       if (a.length != sk) {
-        formatArrStr = '';
+        formatArrStr = "";
         return;
       }
 
       for (let k = 0; k < sk; k++) {
         const num = parseInt(a[k]);
-        formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(' ') + num + (k == sk - 1 ? '' : ',');
+        formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(" ") + num + (k == sk - 1 ? "" : ",");
       }
-      formatArrStr += ']' + (i == si - 1 ? '' : ',\n');
+      formatArrStr += "]" + (i == si - 1 ? "" : ",\n");
     }
     return formatArrStr;
-  }
+  };
 
   const exportMap = () => {
     editor.updateMap();
     const sx = editor.map.length - 1, sy = editor.map[0].length - 1;
 
-    let filestr = '';
+    let filestr = "";
     for (let yy = 0; yy <= sy; yy++) {
-      filestr += '['
+      filestr += "[";
       for (let xx = 0; xx <= sx; xx++) {
         let mapxy = editor.map[yy][xx];
-        if (typeof (mapxy) == typeof ({})) {
-          if ('idnum' in mapxy) mapxy = mapxy.idnum;
+        if (typeof mapxy == typeof ({})) {
+          if ("idnum" in mapxy) mapxy = mapxy.idnum;
           else {
             printe("生成失败! 地图中有未定义的图块，建议先用其他有效图块覆盖或点击清除地图！");
             return;
           }
-        } else if (typeof (mapxy) == 'undefined') {
+        } else if (typeof mapxy == "undefined") {
           printe("生成失败! 地图中有未定义的图块，建议先用其他有效图块覆盖或点击清除地图！");
           return;
         }
         mapxy = String(mapxy);
-        mapxy = Array(Math.max(4 - mapxy.length, 0)).join(' ') + mapxy;
-        filestr += mapxy + (xx == sx ? '' : ',')
+        mapxy = Array(Math.max(4 - mapxy.length, 0)).join(" ") + mapxy;
+        filestr += mapxy + (xx == sx ? "" : ",");
       }
 
-      filestr += ']' + (yy == sy ? '' : ',\n');
+      filestr += "]" + (yy == sy ? "" : ",\n");
     }
     setPoutValue(filestr);
     if (formatArr()) {
@@ -80,75 +80,83 @@ export const MapPanel: FC = () => {
       }
       printf("导出并复制成功！");
     } else {
-      printe("无法导出并复制此地图，可能有不合法块。")
+      printe("无法导出并复制此地图，可能有不合法块。");
     }
-  }
+  };
 
   const importMap = () => {
     const sy = editor.map.length, sx = editor.map[0].length;
     let mapArray = null;
     let value = poutValue.trim();
     // 去除可能末尾的 ','
-    if (value.endsWith(',')) value = value.substring(0, value.length - 1);
-    try { mapArray = JSON.parse(value); } catch (e) { console.log(e) }
-    try { mapArray = mapArray || JSON.parse('[' + value + ']'); } catch (e) { console.log(e) }
+    if (value.endsWith(",")) value = value.substring(0, value.length - 1);
+    try {
+      mapArray = JSON.parse(value);
+    } catch (e) {
+      console.log(e);
+    }
+    try {
+      mapArray = mapArray || JSON.parse("[" + value + "]");
+    } catch (e) {
+      console.log(e);
+    }
     if (mapArray == null || mapArray.length != sy || mapArray[0].length != sx) {
-      printe('格式错误！请使用正确格式(请使用地图生成器进行生成，且需要和本地图宽高完全一致)');
+      printe("格式错误！请使用正确格式(请使用地图生成器进行生成，且需要和本地图宽高完全一致)");
       return;
     }
     let hasError = false;
-    for (let y = 0; y < sy; y++)
+    for (let y = 0; y < sy; y++) {
       for (let x = 0; x < sx; x++) {
         const num = mapArray[y][x];
-        if (num == 0)
+        if (num == 0) {
           editor.map[y][x] = 0;
-        else if (editor.indexs[num] == null || editor.indexs[num][0] == null) {
-          printe('当前有未定义ID（在地图区域显示红块），请用有效的图块进行覆盖！')
+        } else if (editor.indexs[num] == null || editor.indexs[num][0] == null) {
+          printe("当前有未定义ID（在地图区域显示红块），请用有效的图块进行覆盖！");
           hasError = true;
           editor.map[y][x] = {};
         } else editor.map[y][x] = editor.ids[[editor.indexs[num][0]]];
       }
+    }
     editor.updateMap();
-    if (!hasError) printf('地图导入成功！');
-  }
+    if (!hasError) printf("地图导入成功！");
+  };
 
   const clearMap = () => {
-    if (!confirm('你确定要清除地图上所有内容么？此过程不可逆！')) return;
+    if (!confirm("你确定要清除地图上所有内容么？此过程不可逆！")) return;
     editor.mapInit();
-    editor_mode.onmode('');
-    editor.file.saveFloorFile(function (err) {
+    editor_mode.onmode("");
+    editor.file.saveFloorFile((err) => {
       if (err) {
         printe(err);
-        throw (err)
+        throw err;
       }
-      ; printf('地图清除成功');
+      printf("地图清除成功");
     });
     editor.updateMap();
-  }
+  };
 
   const deleteMap = () => {
-    if (!confirm('你确定要删除此地图么？此过程不可逆！')) return;
-    editor_mode.onmode('');
+    if (!confirm("你确定要删除此地图么？此过程不可逆！")) return;
+    editor_mode.onmode("");
     const index = core.floorIds.indexOf(editor.currentFloorId);
     if (index >= 0) {
       core.floorIds.splice(index, 1);
-      editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
+      editor.file.editTower([["change", "['main']['floorIds']", core.floorIds]], (objs_) => { // console.log(objs_);
         if (objs_.slice(-1)[0] != null) {
           printe(objs_.slice(-1)[0]);
-          throw (objs_.slice(-1)[0])
+          throw (objs_.slice(-1)[0]);
         }
-        ; printe('删除成功,请F5刷新编辑器生效');
+        printe("删除成功,请F5刷新编辑器生效");
       });
-    }
-    else printe('删除成功,请F5刷新编辑器生效');
-  }
+    } else printe("删除成功,请F5刷新编辑器生效");
+  };
 
   const createNewMap = async () => {
     if (!newFileName) return;
-    const findFunc = function (id) {
-      const re = new RegExp(newFileName, 'i');
+    const findFunc = function(id) {
+      const re = new RegExp(newFileName, "i");
       return re.test(id);
-    }
+    };
     if (core.floorIds.find(findFunc) != null) {
       printe("同名楼层已存在！(不区分大小写)");
       return;
@@ -164,31 +172,31 @@ export const MapPanel: FC = () => {
       return;
     }
 
-    editor_mode.onmode('');
+    editor_mode.onmode("");
     await createMapFile(newFileName, {
       width,
       height,
-      saveStatus: newMapStatus
+      saveStatus: newMapStatus,
     }).catch((err) => {
       if (err) {
         printe(err);
-        throw (err)
+        throw err;
       }
     });
     core.floorIds.push(newFileName);
-    editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {
-      //console.log(objs_);
+    editor.file.editTower([["change", "['main']['floorIds']", core.floorIds]], (objs_) => {
+      // console.log(objs_);
       if (objs_.slice(-1)[0] != null) {
         printe(objs_.slice(-1)[0]);
-        throw (objs_.slice(-1)[0])
+        throw (objs_.slice(-1)[0]);
       }
-      ; printe('新建成功,请F5刷新编辑器生效');
+      printe("新建成功,请F5刷新编辑器生效");
     });
-  }
+  };
 
   const toggleBatchCreateMapsForm = () => {
     setBatchCreateMapsFormVisible(!batchCreateMapsFormVisible);
-  }
+  };
 
   return (
     <div id="left" style={{ zIndex: -1, opacity: 0 }}>
@@ -197,11 +205,11 @@ export const MapPanel: FC = () => {
         <table className="col" id="arrColMark" />
         <table className="row" id="arrRowMark" />
         <div id="mapEditArea">
-          <textarea 
+          <textarea
             ref={poutRef}
-            cols={10} 
-            rows={10} 
-            id="pout" 
+            cols={10}
+            rows={10}
+            id="pout"
             value={poutValue}
             onChange={(e) => setPoutValue(e.target.value)}
           />
@@ -216,16 +224,16 @@ export const MapPanel: FC = () => {
             onChange={(e) => setNewFileName(e.target.value)}
           />
           <span style={{ verticalAlign: "bottom" }}>宽</span>
-          <input 
-            id="newMapWidth" 
-            style={{ width: 20 }} 
+          <input
+            id="newMapWidth"
+            style={{ width: 20 }}
             value={newMapWidth}
             onChange={(e) => setNewMapWidth(e.target.value)}
           />
           <span style={{ verticalAlign: "bottom" }}>高</span>
-          <input 
-            id="newMapHeight" 
-            style={{ width: 20 }} 
+          <input
+            id="newMapHeight"
+            style={{ width: 20 }}
             value={newMapHeight}
             onChange={(e) => setNewMapHeight(e.target.value)}
           />
@@ -251,4 +259,4 @@ export const MapPanel: FC = () => {
       </div>
     </div>
   );
-}
+};

@@ -24,7 +24,7 @@ export const PrefabPanel: FC = () => {
       if (core.statusBar.icons[id] != null) {
         alert('警告！此ID在状态栏图标中被注册；仍然允许使用，但是\\i[]等绘制可能出现冲突。');
       }
-      editor.file.changeIdAndIdnum(id, idnum, editor_mode.info, function (err) {
+      editor.file.changeIdAndIdnum(id, idnum, editor_mode.info, (err) => {
         if (err) {
           printe(err);
           throw (err)
@@ -37,7 +37,7 @@ export const PrefabPanel: FC = () => {
   }
 
   const handleAutoRegister = () => {
-    editor.file.autoRegister(editor_mode.info, function (err) {
+    editor.file.autoRegister(editor_mode.info, (err) => {
       if (err) {
         printe(err);
         throw (err)
@@ -48,7 +48,7 @@ export const PrefabPanel: FC = () => {
 
   const handleRemoveMaterial = () => {
     if (!confirm("警告！你确定要删除此素材吗？此过程不可逆！")) return;
-    editor.file.removeMaterial(editor_mode.info, function (err) {
+    editor.file.removeMaterial(editor_mode.info, (err) => {
       if (err) {
         printe(err);
         throw err;
@@ -84,7 +84,7 @@ export const PrefabPanel: FC = () => {
       if (core.statusBar.icons[id] != null) {
         alert('警告！此ID在状态栏图标中被注册；仍然允许使用，但是\\i[]等绘制可能出现冲突。');
       }
-      editor.file.changeIdAndIdnum(id, null, editor_mode.info, function (err) {
+      editor.file.changeIdAndIdnum(id, null, editor_mode.info, (err) => {
         if (err) {
           printe(err);
           throw (err);
@@ -102,7 +102,7 @@ export const PrefabPanel: FC = () => {
       return;
     }
     if (!confirm("警告！你确定要删除此素材吗？此过程不可逆！\n请务必首先进行备份操作，并保证此素材没有在地图的任何位置使用，否则可能会出现不可知的后果！")) return;
-    editor.file.removeMaterial(editor_mode.info, function (err) {
+    editor.file.removeMaterial(editor_mode.info, (err) => {
       if (err) {
         printe(err);
         return;
@@ -141,7 +141,7 @@ export const PrefabPanel: FC = () => {
         enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80[id].id = id;
         enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80[id].name = name;
         enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80[id].displayIdInBook = displayIdInBook;
-        editor.file.saveSetting('enemys', [], function (err) {
+        editor.file.saveSetting('enemys', [], (err) => {
           if (err) printe(err);
           else printf("怪物属性粘贴成功\n请再重新选中该怪物方可查看更新后的表格。");
         })
@@ -152,7 +152,7 @@ export const PrefabPanel: FC = () => {
         items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a[id] = core.clone(editor.uivalues.copyEnemyItem.data);
         items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a[id].id = id;
         items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a[id].name = name;
-        editor.file.saveSetting('items', [], function (err) {
+        editor.file.saveSetting('items', [], (err) => {
           if (err) printe(err);
           else printf("道具属性粘贴成功\n请再重新选中该道具方可查看更新后的表格。");
         })
@@ -181,7 +181,7 @@ export const PrefabPanel: FC = () => {
     if (cls == 'enemys' || cls == 'enemy48') {
       if (confirm("你确定要清空本怪物的全部属性么？这是个不可逆操作！")) {
         _clearEnemy(id);
-        editor.file.saveSetting('enemys', [], function (err) {
+        editor.file.saveSetting('enemys', [], (err) => {
           if (err) printe(err);
           else printf("怪物属性清空成功\n请再重新选中该怪物方可查看更新后的表格。");
         })
@@ -189,7 +189,7 @@ export const PrefabPanel: FC = () => {
     } else if (cls == 'items') {
       if (confirm("你确定要清空本道具的全部属性么？这是个不可逆操作！")) {
         _clearItem(id);
-        editor.file.saveSetting('items', [], function (err) {
+        editor.file.saveSetting('items', [], (err) => {
           if (err) printe(err);
           else printf("道具属性清空成功\n请再重新选中该道具方可查看更新后的表格。");
         })
@@ -205,7 +205,7 @@ export const PrefabPanel: FC = () => {
       if (confirm("你确定要批量清空【全塔怪物】的全部属性么？这是个不可逆操作！")) {
         for (var id in enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80)
           _clearEnemy(id);
-        editor.file.saveSetting('enemys', [], function (err) {
+        editor.file.saveSetting('enemys', [], (err) => {
           if (err) printe(err);
           else printf("全塔全部怪物属性清空成功！");
         })
@@ -217,7 +217,7 @@ export const PrefabPanel: FC = () => {
             _clearItem(id);
           }
         }
-        editor.file.saveSetting('items', [], function (err) {
+        editor.file.saveSetting('items', [], (err) => {
           if (err) printe(err);
           else printf("全塔全部道具属性清空成功！");
         })

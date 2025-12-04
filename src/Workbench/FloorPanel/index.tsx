@@ -21,13 +21,13 @@ export const FloorPanel: FC = () => {
       const currentFloorId = editor.currentFloorId;
       editor.currentFloorId = floorId;
       editor.currentFloorData.floorId = floorId;
-      editor.file.saveFloorFile(function (err) {
+      editor.file.saveFloorFile((err) => {
         if (err) {
           printe(err);
           throw (err);
         }
         core.floorIds[core.floorIds.indexOf(currentFloorId)] = floorId;
-        editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], function (objs_) {//console.log(objs_);
+        editor.file.editTower([['change', "['main']['floorIds']", core.floorIds]], (objs_) => {//console.log(objs_);
           if (objs_.slice(-1)[0] != null) {
             printe(objs_.slice(-1)[0]);
             throw (objs_.slice(-1)[0])
@@ -61,7 +61,7 @@ export const FloorPanel: FC = () => {
     newFloorData.height = height;
 
     // Step 2:更新map, bgmap和fgmap
-    editor.dom.maps.forEach(function (name) {
+    editor.dom.maps.forEach((name) => {
       newFloorData[name] = [];
       if (currentFloorData[name] && currentFloorData[name].length > 0) {
         for (let j = 0; j < height; ++j) {
@@ -80,7 +80,7 @@ export const FloorPanel: FC = () => {
     });
 
     // Step 3:更新所有坐标
-    ["events", "beforeBattle", "afterBattle", "afterGetItem", "afterOpenDoor", "changeFloor", "autoEvent", "cannotMove"].forEach(function (name) {
+    ["events", "beforeBattle", "afterBattle", "afterGetItem", "afterOpenDoor", "changeFloor", "autoEvent", "cannotMove"].forEach((name) => {
       newFloorData[name] = {};
       if (!currentFloorData[name]) return;
       for (const loc in currentFloorData[name]) {
@@ -93,14 +93,14 @@ export const FloorPanel: FC = () => {
     });
 
     // Step 4:上楼点&下楼点
-    ["upFloor", "downFloor"].forEach(function (name) {
+    ["upFloor", "downFloor"].forEach((name) => {
       if (newFloorData[name] && newFloorData[name].length == 2) {
         newFloorData[name][0] += x;
         newFloorData[name][1] += y;
       }
     });
 
-    editor.file.saveFloor(newFloorData, function (err) {
+    editor.file.saveFloor(newFloorData, (err) => {
       if (err) {
         printe(err);
         throw (err)
