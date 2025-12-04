@@ -1,12 +1,12 @@
 import { createStore } from "@/utils/store/store";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { EditorStore } from "./EditorStore";
 
 export const GameDataStore = createStore(() => {
-  const [gameInitialized, setGameInitialized] = useState(false);
+  const { editorInitialized } = EditorStore.useStore();
 
   return {
-    gameInitialized,
-    setGameInitialized,
+    gameInitialized: editorInitialized,
   }
 });
 
