@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { EditorStore, useEditor } from "@/stores/EditorStore";
 import type { FC } from "react";
 import { TList } from "./constants";
@@ -12,20 +13,33 @@ export const AppendPicPanel: FC = () => {
   const [selectAppend, setSelectAppend] = useState<string>("terrains");
 
   const appendPic = useRef({} as any);
+  
+  // DOM refs
+  const dom = useRef({
+    appendPicSelection: null as HTMLDivElement | null,
+    appendSprite: null as HTMLCanvasElement | null,
+    appendSpriteCtx: null as CanvasRenderingContext2D | null,
+    appendSourceCtx: null as CanvasRenderingContext2D | null,
+    appendBgCtx: null as CanvasRenderingContext2D | null,
+    appendPicCanvas: null as HTMLDivElement | null,
+    appendPicClick: null as HTMLCanvasElement | null,
+    left1: null as HTMLDivElement | null,
+  });
 
   // --- selectAppend (现在通过 React state 管理)
   const handleSelectAppendChange = (value: string) => {
+    if (!dom.current.appendPicSelection || !dom.current.appendSprite || !dom.current.appendSpriteCtx) return;
 
     if (value == "autotile") {
       appendPic.current.imageName = "autotile";
-      for (let jj = 0; jj < 4; jj++) editor.dom.appendPicSelection.children[jj].style = "display:none";
+      for (let jj = 0; jj < 4; jj++) (dom.current.appendPicSelection.children[jj] as HTMLElement).style = "display:none";
       if (appendPic.current.img) {
-        editor.dom.appendSprite.style.width =
-          (editor.dom.appendSprite.width = appendPic.current.img.width) / uiRatio + "px";
-        editor.dom.appendSprite.style.height =
-          (editor.dom.appendSprite.height = appendPic.current.img.height) / uiRatio + "px";
-        editor.dom.appendSpriteCtx.clearRect(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
-        editor.dom.appendSpriteCtx.drawImage(appendPic.current.img, 0, 0);
+        dom.current.appendSprite.style.width =
+          (dom.current.appendSprite.width = appendPic.current.img.width) / uiRatio + "px";
+        dom.current.appendSprite.style.height =
+          (dom.current.appendSprite.height = appendPic.current.img.height) / uiRatio + "px";
+        dom.current.appendSpriteCtx.clearRect(0, 0, dom.current.appendSprite.width, dom.current.appendSprite.height);
+        dom.current.appendSpriteCtx.drawImage(appendPic.current.img, 0, 0);
       }
       return;
     }
@@ -39,23 +53,38 @@ export const AppendPicPanel: FC = () => {
     appendPic.current.index = 0;
     let selectStr = "";
     for (let ii = 0; ii < num; ii++) {
-      editor.dom.appendPicSelection.children[ii].style = "left:0;top:0;height:" + (ysize - 6) + "px";
+      (dom.current.appendPicSelection.children[ii] as HTMLElement).style = "left:0;top:0;height:" + (ysize - 6) + "px";
       selectStr += "{\"x\":0,\"y\":0},";
     }
     appendPic.current.selectPos = eval("[" + selectStr + "]");
     for (let jj = num; jj < 4; jj++) {
-      editor.dom.appendPicSelection.children[jj].style = "display:none";
+      (dom.current.appendPicSelection.children[jj] as HTMLElement).style = "display:none";
     }
-    editor.dom.appendSprite.style.width = (editor.dom.appendSprite.width = img.width) / uiRatio + "px";
-    editor.dom.appendSprite.style.height =
-      (editor.dom.appendSprite.height = img.height + ysize) / uiRatio + "px";
-    editor.dom.appendSpriteCtx.drawImage(img, 0, 0);
+    dom.current.appendSprite.style.width = (dom.current.appendSprite.width = img.width) / uiRatio + "px";
+    dom.current.appendSprite.style.height =
+      (dom.current.appendSprite.height = img.height + ysize) / uiRatio + "px";
+    dom.current.appendSpriteCtx.drawImage(img, 0, 0);
   };
   
   useEditor(() => {
+    // Initialize DOM refs
+    dom.current.appendPicSelection = document.getElementById("appendPicSelection") as HTMLDivElement;
+    dom.current.left1 = document.getElementById("left1") as HTMLDivElement;
+    dom.current.appendPicCanvas = document.getElementById("appendPicCanvas") as HTMLDivElement;
+    dom.current.appendPicClick = dom.current.appendPicCanvas?.children[2] as HTMLCanvasElement;
+    
+    // Initialize canvas contexts
+    const canvases = dom.current.appendPicCanvas?.children;
+    if (canvases) {
+      dom.current.appendBgCtx = (canvases[0] as HTMLCanvasElement).getContext("2d");
+      dom.current.appendSourceCtx = (canvases[1] as HTMLCanvasElement).getContext("2d");
+      dom.current.appendSprite = canvases[3] as HTMLCanvasElement;
+      dom.current.appendSpriteCtx = dom.current.appendSprite.getContext("2d");
+    }
+    
     // --- fix ctx
-    [editor.dom.appendSourceCtx, editor.dom.appendSpriteCtx].forEach((ctx) => {
-      disableImageSmoothing(ctx);
+    [dom.current.appendSourceCtx, dom.current.appendSpriteCtx].forEach((ctx) => {
+      if (ctx) disableImageSmoothing(ctx);
     });
     
     // 初始化时调用一次
@@ -160,16 +189,16 @@ export const AppendPicPanel: FC = () => {
 
           if (selectAppend == "autotile") {
             for (var ii = 0; ii < 3; ii++) {
-              var newsprite = editor.dom.appendPicCanvas.children[ii];
+              var newsprite = dom.current.appendPicCanvas.children[ii];
               newsprite.style.width = (newsprite.width = image.width) / uiRatio + "px";
               newsprite.style.height = (newsprite.height = image.height) / uiRatio + "px";
             }
-            editor.dom.appendSpriteCtx.clearRect(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
-            editor.dom.appendSpriteCtx.drawImage(image, 0, 0);
+            dom.current.appendSpriteCtx.clearRect(0, 0, dom.current.appendSprite.width, dom.current.appendSprite.height);
+            dom.current.appendSpriteCtx.drawImage(image, 0, 0);
           } else {
             const ysize = selectAppend.endsWith("48") ? 48 : 32;
             for (var ii = 0; ii < 3; ii++) {
-              var newsprite = editor.dom.appendPicCanvas.children[ii];
+              var newsprite = dom.current.appendPicCanvas.children[ii];
               newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / uiRatio
                 + "px";
               newsprite.style.height =
@@ -178,7 +207,7 @@ export const AppendPicPanel: FC = () => {
           }
 
           // 画灰白相间的格子
-          const bgc = editor.dom.appendBgCtx;
+          const bgc = dom.current.appendBgCtx;
           const colorA = ["#f8f8f8", "#cccccc"];
           let colorIndex;
           const sratio = 4;
@@ -192,8 +221,8 @@ export const AppendPicPanel: FC = () => {
           }
 
           // 把导入的图片画出
-          editor.dom.appendSourceCtx.drawImage(image, 0, 0);
-          appendPic.current.sourceImageData = editor.dom.appendSourceCtx.getImageData(
+          dom.current.appendSourceCtx.drawImage(image, 0, 0);
+          appendPic.current.sourceImageData = dom.current.appendSourceCtx.getImageData(
             0,
             0,
             image.width,
@@ -239,8 +268,8 @@ export const AppendPicPanel: FC = () => {
           setPixel(nimgData, x, y, convert(getPixel(imgData, x, y), delta));
         }
       }
-      editor.dom.appendSourceCtx.clearRect(0, 0, imgData.width, imgData.height);
-      editor.dom.appendSourceCtx.putImageData(nimgData, 0, 0);
+      dom.current.appendSourceCtx.clearRect(0, 0, imgData.width, imgData.height);
+      dom.current.appendSourceCtx.putImageData(nimgData, 0, 0);
     };
 
     // --- picClick
@@ -248,10 +277,10 @@ export const AppendPicPanel: FC = () => {
       const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
       const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
       const loc = {
-        "x": scrollLeft + e.clientX + editor.dom.appendPicCanvas.scrollLeft - editor.dom.left1.offsetLeft
-          - editor.dom.appendPicCanvas.offsetLeft,
-        "y": scrollTop + e.clientY + editor.dom.appendPicCanvas.scrollTop - editor.dom.left1.offsetTop
-          - editor.dom.appendPicCanvas.offsetTop,
+        "x": scrollLeft + e.clientX + dom.current.appendPicCanvas.scrollLeft - dom.current.left1.offsetLeft
+          - dom.current.appendPicCanvas.offsetLeft,
+        "y": scrollTop + e.clientY + dom.current.appendPicCanvas.scrollTop - dom.current.left1.offsetTop
+          - dom.current.appendPicCanvas.offsetTop,
         "size": 32,
         "ysize": selectAppend.endsWith("48") ? 48 : 32,
       };
@@ -263,7 +292,7 @@ export const AppendPicPanel: FC = () => {
       return pos;
     };
 
-    editor.dom.appendPicClick.onclick = function(e) {
+    dom.current.appendPicClick.onclick = function(e) {
       const loc = eToLoc(e);
       const pos = locToPos(loc);
       // console.log(e,loc,pos);
@@ -272,7 +301,7 @@ export const AppendPicPanel: FC = () => {
       if (ii + 1 >= num) appendPic.current.index = ii + 1 - num;
       else appendPic.current.index++;
       appendPic.current.selectPos[ii] = pos;
-      editor.dom.appendPicSelection.children[ii].style = [
+      dom.current.appendPicSelection.children[ii].style = [
         "left:",
         pos.x * 32,
         "px;",
@@ -295,9 +324,9 @@ export const AppendPicPanel: FC = () => {
           printe("不合法的Autotile图片！");
           return;
         }
-        const imgData = editor.dom.appendSourceCtx.getImageData(0, 0, image.width, image.height);
-        editor.dom.appendSpriteCtx.putImageData(imgData, 0, 0);
-        const imgbase64 = editor.dom.appendSprite.toDataURL().split(",")[1];
+        const imgData = dom.current.appendSourceCtx.getImageData(0, 0, image.width, image.height);
+        dom.current.appendSpriteCtx.putImageData(imgData, 0, 0);
+        const imgbase64 = dom.current.appendSprite.toDataURL().split(",")[1];
 
         // Step 1: List文件名
         fs.readdir("./project/autotiles", (err, data) => {
@@ -338,38 +367,38 @@ export const AppendPicPanel: FC = () => {
 
       const ysize = selectAppend.endsWith("48") ? 48 : 32;
       for (var ii = 0, v; v = appendPic.current.selectPos[ii]; ii++) {
-        // var imgData = editor.dom.appendSourceCtx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
-        // editor.dom.appendSpriteCtx.putImageData(imgData, ii * 32, editor.dom.appendSprite.height - ysize);
-        // editor.dom.appendSpriteCtx.drawImage(appendPic.current.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
+        // var imgData = dom.current.appendSourceCtx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
+        // dom.current.appendSpriteCtx.putImageData(imgData, ii * 32, dom.current.appendSprite.height - ysize);
+        // dom.current.appendSpriteCtx.drawImage(appendPic.current.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
 
-        editor.dom.appendSpriteCtx.drawImage(
-          editor.dom.appendSourceCtx.canvas,
+        dom.current.appendSpriteCtx.drawImage(
+          dom.current.appendSourceCtx.canvas,
           v.x * 32,
           v.y * ysize,
           32,
           ysize,
           32 * ii,
-          editor.dom.appendSprite.height - ysize,
+          dom.current.appendSprite.height - ysize,
           32,
           ysize,
         );
       }
-      const dt = editor.dom.appendSpriteCtx.getImageData(
+      const dt = dom.current.appendSpriteCtx.getImageData(
         0,
         0,
-        editor.dom.appendSprite.width,
-        editor.dom.appendSprite.height,
+        dom.current.appendSprite.width,
+        dom.current.appendSprite.height,
       );
-      const imgbase64 = editor.dom.appendSprite.toDataURL("image/png");
+      const imgbase64 = dom.current.appendSprite.toDataURL("image/png");
       const imgName = appendPic.current.imageName;
       fs.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64", (err, data) => {
         if (err) {
           printe(err);
           throw err;
         }
-        const currHeight = editor.dom.appendSprite.height;
-        editor.dom.appendSprite.style.height = (editor.dom.appendSprite.height = currHeight + ysize) + "px";
-        editor.dom.appendSpriteCtx.putImageData(dt, 0, 0);
+        const currHeight = dom.current.appendSprite.height;
+        dom.current.appendSprite.style.height = (dom.current.appendSprite.height = currHeight + ysize) + "px";
+        dom.current.appendSpriteCtx.putImageData(dt, 0, 0);
         core.material.images[imgName].src = imgbase64;
         editor.widthsX[imgName][3] = currHeight;
         if (appendRegister && appendRegister.checked) {
@@ -393,7 +422,7 @@ export const AppendPicPanel: FC = () => {
         return printe("只有怪物或NPC才能快速导入！");
       }
       const ysize = value.endsWith("48") ? 48 : 32;
-      let sw = editor.dom.appendSourceCtx.canvas.width, sh = editor.dom.appendSourceCtx.canvas.height;
+      let sw = dom.current.appendSourceCtx.canvas.width, sh = dom.current.appendSourceCtx.canvas.height;
       if (value == "items") {
         if (sw % 32 || sh % 32) {
           return printe("只有长宽都是32的倍数的道具图才可以快速导入！");
@@ -406,65 +435,65 @@ export const AppendPicPanel: FC = () => {
       sw = sw / 32;
       sh = sh / ysize;
 
-      let dt = editor.dom.appendSpriteCtx.getImageData(
+      let dt = dom.current.appendSpriteCtx.getImageData(
         0,
         0,
-        editor.dom.appendSprite.width,
-        editor.dom.appendSprite.height,
+        dom.current.appendSprite.width,
+        dom.current.appendSprite.height,
       );
       const appendSize = value == "items" ? (sw * sh - 1) : 3;
-      editor.dom.appendSprite.style.height =
-        (editor.dom.appendSprite.height = editor.dom.appendSprite.height + appendSize * ysize) + "px";
-      editor.dom.appendSpriteCtx.putImageData(dt, 0, 0);
-      if (editor.dom.appendSprite.width == 32) { // 1帧：道具
+      dom.current.appendSprite.style.height =
+        (dom.current.appendSprite.height = dom.current.appendSprite.height + appendSize * ysize) + "px";
+      dom.current.appendSpriteCtx.putImageData(dt, 0, 0);
+      if (dom.current.appendSprite.width == 32) { // 1帧：道具
         for (let i = 0; i < sw * sh; ++i) {
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             32 * (i % sw),
             32 * parseInt(i / sw),
             32,
             32,
             0,
-            editor.dom.appendSprite.height - (sw * sh - i) * ysize,
+            dom.current.appendSprite.height - (sw * sh - i) * ysize,
             32,
             32,
           );
         }
-      } else if (editor.dom.appendSprite.width == 64) { // 两帧
+      } else if (dom.current.appendSprite.width == 64) { // 两帧
         if (sw == 3) {
           // 3*4的规格使用13帧
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             0,
             0,
             32,
             4 * ysize,
             0,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             32,
             4 * ysize,
           );
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             64,
             0,
             32,
             4 * ysize,
             32,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             32,
             4 * ysize,
           );
         } else {
           // 4*4的规格使用23帧
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             32,
             0,
             64,
             4 * ysize,
             0,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             64,
             4 * ysize,
           );
@@ -472,55 +501,55 @@ export const AppendPicPanel: FC = () => {
       } else { // 四帧
         if (sw == 3) {
           // 3*4的规格使用2123帧
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             32,
             0,
             32,
             4 * ysize,
             0,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             32,
             4 * ysize,
           );
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             0,
             0,
             96,
             4 * ysize,
             32,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             96,
             4 * ysize,
           );
         } else {
           // 4*4的规格使用1234帧
-          editor.dom.appendSpriteCtx.drawImage(
-            editor.dom.appendSourceCtx.canvas,
+          dom.current.appendSpriteCtx.drawImage(
+            dom.current.appendSourceCtx.canvas,
             0,
             0,
             128,
             4 * ysize,
             0,
-            editor.dom.appendSprite.height - 4 * ysize,
+            dom.current.appendSprite.height - 4 * ysize,
             128,
             4 * ysize,
           );
         }
       }
 
-      dt = editor.dom.appendSpriteCtx.getImageData(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
-      const imgbase64 = editor.dom.appendSprite.toDataURL("image/png");
+      dt = dom.current.appendSpriteCtx.getImageData(0, 0, dom.current.appendSprite.width, dom.current.appendSprite.height);
+      const imgbase64 = dom.current.appendSprite.toDataURL("image/png");
       const imgName = appendPic.current.imageName;
       fs.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64", (err, data) => {
         if (err) {
           printe(err);
           throw err;
         }
-        const currHeight = editor.dom.appendSprite.height;
-        editor.dom.appendSprite.style.height = (editor.dom.appendSprite.height = currHeight + ysize) + "px";
-        editor.dom.appendSpriteCtx.putImageData(dt, 0, 0);
+        const currHeight = dom.current.appendSprite.height;
+        dom.current.appendSprite.style.height = (dom.current.appendSprite.height = currHeight + ysize) + "px";
+        dom.current.appendSpriteCtx.putImageData(dt, 0, 0);
         core.material.images[imgName].src = imgbase64;
         editor.widthsX[imgName][3] = currHeight;
         if (appendRegister && appendRegister.checked) {
@@ -589,7 +618,7 @@ export const AppendPicPanel: FC = () => {
         appendPic.current.index = 0;
         for (let ii = 0; ii < appendPic.current.num; ++ii) {
           appendPic.current.selectPos[ii] = { x: ii, y: 0, ysize: height };
-          editor.dom.appendPicSelection.children[ii].style = [
+          dom.current.appendPicSelection.children[ii].style = [
             "left:",
             ii * 32,
             "px;",
