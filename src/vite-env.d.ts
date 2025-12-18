@@ -10,10 +10,10 @@ const confirmColor: () => void;
 
 interface Window {
   printf: (msg: string) => void;
-  printe: (msg: string) => void;
+  printe: (msg: unknown) => void;
   printi: (msg: string) => void;
 }
 
 const printf: (msg: string) => void;
-const printe: (msg: string) => void;
+const printe: (msg: unknown) => void;
 const printi: (msg: string) => void;
