@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 export const EditorStore = createStore(() => {
   const [editorInitialized, setEditorInitialized] = useState(false);
 
+  const [uiRatio, setUIRatio] = useState(1);
+
   return {
     editorInitialized,
     setEditorInitialized,
+    uiRatio,
+    setUIRatio,
   }
 });
 

@@ -1,62 +1,65 @@
-import { useEditor } from "@/stores/EditorStore";
+import { EditorStore, useEditor } from "@/stores/EditorStore";
 import type { FC } from "react";
 import { TList } from "./constants";
+import { useRef, useState } from "react";
+import { getPixel, setPixel } from "@/utils/canvas/pixel";
+import { detectWhiteBackground } from "@/utils/canvas/detectWhiteBackground";
+import { removeWhiteBackground } from "@/utils/canvas/removeWhiteBackground";
+import { disableImageSmoothing } from "@/utils/canvas/disableImageSmoothing";
 
 export const AppendPicPanel: FC = () => {
+  const { uiRatio } = EditorStore.useStore();
+  const [selectAppend, setSelectAppend] = useState<string>("terrains");
+
+  const appendPic = useRef({} as any);
+
+  // --- selectAppend (现在通过 React state 管理)
+  const handleSelectAppendChange = (value: string) => {
+
+    if (value == "autotile") {
+      appendPic.current.imageName = "autotile";
+      for (let jj = 0; jj < 4; jj++) editor.dom.appendPicSelection.children[jj].style = "display:none";
+      if (appendPic.current.img) {
+        editor.dom.appendSprite.style.width =
+          (editor.dom.appendSprite.width = appendPic.current.img.width) / uiRatio + "px";
+        editor.dom.appendSprite.style.height =
+          (editor.dom.appendSprite.height = appendPic.current.img.height) / uiRatio + "px";
+        editor.dom.appendSpriteCtx.clearRect(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
+        editor.dom.appendSpriteCtx.drawImage(appendPic.current.img, 0, 0);
+      }
+      return;
+    }
+
+    const ysize = value.endsWith("48") ? 48 : 32;
+    appendPic.current.imageName = value;
+    const img = core.material.images[value];
+    appendPic.current.toImg = img;
+    const num = ~~img.width / 32;
+    appendPic.current.num = num;
+    appendPic.current.index = 0;
+    let selectStr = "";
+    for (let ii = 0; ii < num; ii++) {
+      editor.dom.appendPicSelection.children[ii].style = "left:0;top:0;height:" + (ysize - 6) + "px";
+      selectStr += "{\"x\":0,\"y\":0},";
+    }
+    appendPic.current.selectPos = eval("[" + selectStr + "]");
+    for (let jj = num; jj < 4; jj++) {
+      editor.dom.appendPicSelection.children[jj].style = "display:none";
+    }
+    editor.dom.appendSprite.style.width = (editor.dom.appendSprite.width = img.width) / uiRatio + "px";
+    editor.dom.appendSprite.style.height =
+      (editor.dom.appendSprite.height = img.height + ysize) / uiRatio + "px";
+    editor.dom.appendSpriteCtx.drawImage(img, 0, 0);
+  };
+  
   useEditor(() => {
     // --- fix ctx
     [editor.dom.appendSourceCtx, editor.dom.appendSpriteCtx].forEach((ctx) => {
-      ctx.mozImageSmoothingEnabled = false;
-      ctx.webkitImageSmoothingEnabled = false;
-      ctx.msImageSmoothingEnabled = false;
-      ctx.imageSmoothingEnabled = false;
+      disableImageSmoothing(ctx);
     });
-
-    // --- selectAppend
-    const selectAppend_str = [];
-    TList.forEach((image) => {
-      selectAppend_str.push(["<option value='", image, "'>", image, "</option>\n"].join(""));
-    });
-    editor.dom.selectAppend.innerHTML = selectAppend_str.join("");
-    editor.dom.selectAppend.onchange = function() {
-      const value = editor.dom.selectAppend.value;
-
-      if (value == "autotile") {
-        editor_mode.appendPic.imageName = "autotile";
-        for (var jj = 0; jj < 4; jj++) editor.dom.appendPicSelection.children[jj].style = "display:none";
-        if (editor_mode.appendPic.img) {
-          editor.dom.appendSprite.style.width =
-            (editor.dom.appendSprite.width = editor_mode.appendPic.img.width) / editor.uivalues.ratio + "px";
-          editor.dom.appendSprite.style.height =
-            (editor.dom.appendSprite.height = editor_mode.appendPic.img.height) / editor.uivalues.ratio + "px";
-          editor.dom.appendSpriteCtx.clearRect(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
-          editor.dom.appendSpriteCtx.drawImage(editor_mode.appendPic.img, 0, 0);
-        }
-        return;
-      }
-
-      const ysize = editor.dom.selectAppend.value.endsWith("48") ? 48 : 32;
-      editor_mode.appendPic.imageName = value;
-      const img = core.material.images[value];
-      editor_mode.appendPic.toImg = img;
-      const num = ~~img.width / 32;
-      editor_mode.appendPic.num = num;
-      editor_mode.appendPic.index = 0;
-      let selectStr = "";
-      for (let ii = 0; ii < num; ii++) {
-        editor.dom.appendPicSelection.children[ii].style = "left:0;top:0;height:" + (ysize - 6) + "px";
-        selectStr += "{\"x\":0,\"y\":0},";
-      }
-      editor_mode.appendPic.selectPos = eval("[" + selectStr + "]");
-      for (var jj = num; jj < 4; jj++) {
-        editor.dom.appendPicSelection.children[jj].style = "display:none";
-      }
-      editor.dom.appendSprite.style.width = (editor.dom.appendSprite.width = img.width) / editor.uivalues.ratio + "px";
-      editor.dom.appendSprite.style.height =
-        (editor.dom.appendSprite.height = img.height + ysize) / editor.uivalues.ratio + "px";
-      editor.dom.appendSpriteCtx.drawImage(img, 0, 0);
-    };
-    editor.dom.selectAppend.onchange();
+    
+    // 初始化时调用一次
+    handleSelectAppendChange(selectAppend);
 
     // --- selectFileBtn
     const autoAdjust = function(image, callback) {
@@ -66,30 +69,11 @@ export const AppendPicPanel: FC = () => {
       let tempCanvas = document.createElement("canvas").getContext("2d");
       tempCanvas.canvas.width = image.width;
       tempCanvas.canvas.height = image.height;
-      tempCanvas.mozImageSmoothingEnabled = false;
-      tempCanvas.webkitImageSmoothingEnabled = false;
-      tempCanvas.msImageSmoothingEnabled = false;
-      tempCanvas.imageSmoothingEnabled = false;
+      disableImageSmoothing(tempCanvas);
       tempCanvas.drawImage(image, 0, 0);
       const imgData = tempCanvas.getImageData(0, 0, image.width, image.height);
-      let trans = 0, white = 0, black = 0;
-      for (var i = 0; i < image.width; i++) {
-        for (var j = 0; j < image.height; j++) {
-          var pixel = editor.util.getPixel(imgData, i, j);
-          if (pixel[3] == 0) trans++;
-          if (pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255 && pixel[3] == 255) white++;
-          // if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0 && pixel[3]==255) black++;
-        }
-      }
-      if (white > black && white > trans * 10 && confirm("看起来这张图片是以纯白为底色，是否自动调整为透明底色？")) {
-        for (var i = 0; i < image.width; i++) {
-          for (var j = 0; j < image.height; j++) {
-            var pixel = editor.util.getPixel(imgData, i, j);
-            if (pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255 && pixel[3] == 255) {
-              editor.util.setPixel(imgData, i, j, [0, 0, 0, 0]);
-            }
-          }
-        }
+      if (detectWhiteBackground(imgData) && confirm("看起来这张图片是以纯白为底色，是否自动调整为透明底色？")) {
+        removeWhiteBackground(imgData);
         tempCanvas.clearRect(0, 0, image.width, image.height);
         tempCanvas.putImageData(imgData, 0, 0);
         changed = true;
@@ -111,7 +95,7 @@ export const AppendPicPanel: FC = () => {
             */
 
       // Step 2: 检测长宽比
-      const ysize = editor.dom.selectAppend.value.endsWith("48") ? 48 : 32;
+      const ysize = selectAppend.endsWith("48") ? 48 : 32;
       if (
         (image.width % 32 != 0 || image.height % ysize != 0) && (image.width <= 128 && image.height <= ysize * 4)
         && confirm("目标长宽不符合条件，是否自动进行调整？")
@@ -119,10 +103,7 @@ export const AppendPicPanel: FC = () => {
         const ncanvas = document.createElement("canvas").getContext("2d");
         ncanvas.canvas.width = 128;
         ncanvas.canvas.height = 4 * ysize;
-        ncanvas.mozImageSmoothingEnabled = false;
-        ncanvas.webkitImageSmoothingEnabled = false;
-        ncanvas.msImageSmoothingEnabled = false;
-        ncanvas.imageSmoothingEnabled = false;
+        disableImageSmoothing(ncanvas);
         const w = image.width / 4, h = image.height / 4;
         for (var i = 0; i < 4; i++) {
           for (var j = 0; j < 4; j++) {
@@ -173,26 +154,26 @@ export const AppendPicPanel: FC = () => {
     const afterReadFile = function(content, callback) {
       loadImage(content, (image) => {
         autoAdjust(image, (image) => {
-          editor_mode.appendPic.img = image;
-          editor_mode.appendPic.width = image.width;
-          editor_mode.appendPic.height = image.height;
+          appendPic.current.img = image;
+          appendPic.current.width = image.width;
+          appendPic.current.height = image.height;
 
-          if (editor.dom.selectAppend.value == "autotile") {
+          if (selectAppend == "autotile") {
             for (var ii = 0; ii < 3; ii++) {
               var newsprite = editor.dom.appendPicCanvas.children[ii];
-              newsprite.style.width = (newsprite.width = image.width) / editor.uivalues.ratio + "px";
-              newsprite.style.height = (newsprite.height = image.height) / editor.uivalues.ratio + "px";
+              newsprite.style.width = (newsprite.width = image.width) / uiRatio + "px";
+              newsprite.style.height = (newsprite.height = image.height) / uiRatio + "px";
             }
             editor.dom.appendSpriteCtx.clearRect(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
             editor.dom.appendSpriteCtx.drawImage(image, 0, 0);
           } else {
-            const ysize = editor.dom.selectAppend.value.endsWith("48") ? 48 : 32;
+            const ysize = selectAppend.endsWith("48") ? 48 : 32;
             for (var ii = 0; ii < 3; ii++) {
               var newsprite = editor.dom.appendPicCanvas.children[ii];
-              newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / editor.uivalues.ratio
+              newsprite.style.width = (newsprite.width = Math.floor(image.width / 32) * 32) / uiRatio
                 + "px";
               newsprite.style.height =
-                (newsprite.height = Math.floor(image.height / ysize) * ysize) / editor.uivalues.ratio + "px";
+                (newsprite.height = Math.floor(image.height / ysize) * ysize) / uiRatio + "px";
             }
           }
 
@@ -212,7 +193,7 @@ export const AppendPicPanel: FC = () => {
 
           // 把导入的图片画出
           editor.dom.appendSourceCtx.drawImage(image, 0, 0);
-          editor_mode.appendPic.sourceImageData = editor.dom.appendSourceCtx.getImageData(
+          appendPic.current.sourceImageData = editor.dom.appendSourceCtx.getImageData(
             0,
             0,
             image.width,
@@ -220,22 +201,26 @@ export const AppendPicPanel: FC = () => {
           );
 
           // 重置临时变量
-          editor.dom.selectAppend.onchange();
+          handleSelectAppendChange(selectAppend);
 
           if (callback) callback();
         });
       });
     };
 
-    editor.dom.selectFileBtn.onclick = function() {
-      core.readFile(afterReadFile, null, "image/*", "img");
-    };
+    // 将 handleFileSelect 暴露给外部使用（通过 selectFileBtn）
+    const selectFileBtnElement = document.getElementById("selectFileBtn");
+    if (selectFileBtnElement) {
+      selectFileBtnElement.onclick = function() {
+        core.readFile(afterReadFile, null, "image/*", "img");
+      };
+    }
 
     // --- changeColorInput
     const changeColorInput = document.getElementById("changeColorInput");
     changeColorInput.oninput = function() {
       const delta = (~~changeColorInput.value) * 30;
-      const imgData = editor_mode.appendPic.sourceImageData;
+      const imgData = appendPic.current.sourceImageData;
       const nimgData = new ImageData(imgData.width, imgData.height);
       // ImageData .data 形如一维数组,依次排着每个点的 R(0~255) G(0~255) B(0~255) A(0~255)
       const convert = function(rgba, delta) {
@@ -251,7 +236,7 @@ export const AppendPicPanel: FC = () => {
       };
       for (let x = 0; x < imgData.width; x++) {
         for (let y = 0; y < imgData.height; y++) {
-          editor.util.setPixel(nimgData, x, y, convert(editor.util.getPixel(imgData, x, y), delta));
+          setPixel(nimgData, x, y, convert(getPixel(imgData, x, y), delta));
         }
       }
       editor.dom.appendSourceCtx.clearRect(0, 0, imgData.width, imgData.height);
@@ -268,7 +253,7 @@ export const AppendPicPanel: FC = () => {
         "y": scrollTop + e.clientY + editor.dom.appendPicCanvas.scrollTop - editor.dom.left1.offsetTop
           - editor.dom.appendPicCanvas.offsetTop,
         "size": 32,
-        "ysize": editor.dom.selectAppend.value.endsWith("48") ? 48 : 32,
+        "ysize": selectAppend.endsWith("48") ? 48 : 32,
       };
       return loc;
     }; // 返回可用的组件内坐标
@@ -282,11 +267,11 @@ export const AppendPicPanel: FC = () => {
       const loc = eToLoc(e);
       const pos = locToPos(loc);
       // console.log(e,loc,pos);
-      const num = editor_mode.appendPic.num;
-      const ii = editor_mode.appendPic.index;
-      if (ii + 1 >= num) editor_mode.appendPic.index = ii + 1 - num;
-      else editor_mode.appendPic.index++;
-      editor_mode.appendPic.selectPos[ii] = pos;
+      const num = appendPic.current.num;
+      const ii = appendPic.current.index;
+      if (ii + 1 >= num) appendPic.current.index = ii + 1 - num;
+      else appendPic.current.index++;
+      appendPic.current.selectPos[ii] = pos;
       editor.dom.appendPicSelection.children[ii].style = [
         "left:",
         pos.x * 32,
@@ -305,7 +290,7 @@ export const AppendPicPanel: FC = () => {
     const appendConfirm = document.getElementById("appendConfirm");
     appendConfirm.onclick = function() {
       const confirmAutotile = function() {
-        const image = editor_mode.appendPic.img;
+        const image = appendPic.current.img;
         if (image.width % 96 != 0 || image.height != 128) {
           printe("不合法的Autotile图片！");
           return;
@@ -346,16 +331,16 @@ export const AppendPicPanel: FC = () => {
         });
       };
 
-      if (editor.dom.selectAppend.value == "autotile") {
+      if (selectAppend == "autotile") {
         confirmAutotile();
         return;
       }
 
-      const ysize = editor.dom.selectAppend.value.endsWith("48") ? 48 : 32;
-      for (var ii = 0, v; v = editor_mode.appendPic.selectPos[ii]; ii++) {
+      const ysize = selectAppend.endsWith("48") ? 48 : 32;
+      for (var ii = 0, v; v = appendPic.current.selectPos[ii]; ii++) {
         // var imgData = editor.dom.appendSourceCtx.getImageData(v.x * 32, v.y * ysize, 32, ysize);
         // editor.dom.appendSpriteCtx.putImageData(imgData, ii * 32, editor.dom.appendSprite.height - ysize);
-        // editor.dom.appendSpriteCtx.drawImage(editor_mode.appendPic.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
+        // editor.dom.appendSpriteCtx.drawImage(appendPic.current.img, v.x * 32, v.y * ysize, 32, ysize,  ii * 32, height,  32, ysize)
 
         editor.dom.appendSpriteCtx.drawImage(
           editor.dom.appendSourceCtx.canvas,
@@ -376,7 +361,7 @@ export const AppendPicPanel: FC = () => {
         editor.dom.appendSprite.height,
       );
       const imgbase64 = editor.dom.appendSprite.toDataURL("image/png");
-      const imgName = editor_mode.appendPic.imageName;
+      const imgName = appendPic.current.imageName;
       fs.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64", (err, data) => {
         if (err) {
           printe(err);
@@ -403,7 +388,7 @@ export const AppendPicPanel: FC = () => {
 
     const quickAppendConfirm = document.getElementById("quickAppendConfirm");
     quickAppendConfirm.onclick = function() {
-      const value = editor.dom.selectAppend.value;
+      const value = selectAppend;
       if (value != "items" && value != "enemys" && value != "enemy48" && value != "npcs" && value != "npc48") {
         return printe("只有怪物或NPC才能快速导入！");
       }
@@ -527,7 +512,7 @@ export const AppendPicPanel: FC = () => {
 
       dt = editor.dom.appendSpriteCtx.getImageData(0, 0, editor.dom.appendSprite.width, editor.dom.appendSprite.height);
       const imgbase64 = editor.dom.appendSprite.toDataURL("image/png");
-      const imgName = editor_mode.appendPic.imageName;
+      const imgName = appendPic.current.imageName;
       fs.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64", (err, data) => {
         if (err) {
           printe(err);
@@ -554,8 +539,8 @@ export const AppendPicPanel: FC = () => {
 
     editor.uifunctions.dragImageToAppend = function(file, cls) {
       editor.mode.change("appendpic");
-      editor.dom.selectAppend.value = cls;
-      editor.dom.selectAppend.onchange();
+      setSelectAppend(cls);
+      handleSelectAppendChange(cls);
 
       const reader = new FileReader();
       reader.onload = function() {
@@ -594,16 +579,16 @@ export const AppendPicPanel: FC = () => {
       }
 
       editor.mode.change("appendpic");
-      editor.dom.selectAppend.value = cls;
-      editor.dom.selectAppend.onchange();
+      setSelectAppend(cls);
+      handleSelectAppendChange(cls);
 
       afterReadFile(img, () => {
         changeColorInput.value = 0;
         if (cls == "autotile") return;
 
-        editor_mode.appendPic.index = 0;
-        for (let ii = 0; ii < editor_mode.appendPic.num; ++ii) {
-          editor_mode.appendPic.selectPos[ii] = { x: ii, y: 0, ysize: height };
+        appendPic.current.index = 0;
+        for (let ii = 0; ii < appendPic.current.num; ++ii) {
+          appendPic.current.selectPos[ii] = { x: ii, y: 0, ysize: height };
           editor.dom.appendPicSelection.children[ii].style = [
             "left:",
             ii * 32,
@@ -629,10 +614,23 @@ export const AppendPicPanel: FC = () => {
           <input
             id="selectFileBtn"
             type="button"
-            defaultValue="导入文件到画板"
+            value="导入文件到画板"
           />
-          <select id="selectAppend" />
-          {/* ["terrains", "animates", "enemys", "enemy48", "items", "npcs", "npc48"] */}
+          <select 
+            id="selectAppend" 
+            value={selectAppend}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectAppend(value);
+              handleSelectAppendChange(value);
+            }}
+          >
+            {TList.map((image) => (
+              <option key={image} value={image}>
+                {image}
+              </option>
+            ))}
+          </select>
           <input id="appendConfirm" type="button" defaultValue="追加" />
           <input
             id="quickAppendConfirm"

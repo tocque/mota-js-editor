@@ -16,6 +16,7 @@
     "awesomplete": "^1.1.7",
     "blockly": "3.20200402.1",
     "codemirror": "^5.65.20",
+    "color-convert": "^3.1.3",
     "es-toolkit": "^1.42.0",
     "localforage": "^1.10.0",
     "lz-string": "^1.5.0",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/codemirror": "^5.60.17",
+    "@types/color-convert": "^2.0.4",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

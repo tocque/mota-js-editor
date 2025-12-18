@@ -44,8 +44,6 @@ function editor() {
         appendSourceCtx:document.getElementById('appendPicCanvas').children[1].getContext('2d'),
         appendSpriteCtx:document.getElementById('appendPicCanvas').children[3].getContext('2d'),
         appendPicSelection : document.getElementById('appendPicSelection'),
-        selectAppend : document.getElementById('selectAppend'),
-        selectFileBtn :document.getElementById('selectFileBtn'),
         left1 : document.getElementById('left1'),
         editModeSelect :document.getElementById('editModeSelect'),
         mid2 : document.getElementById('mid2'),
