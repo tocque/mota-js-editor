@@ -303,7 +303,7 @@ export const editor_blockly = function () {
             }
 
             var code = "[" + Blockly.JavaScript.blockToCode(b).replace(/\\(i|c|d|e|g|z)/g, '\\\\$1') + "]";
-            const obj = eval(code);
+            let obj = eval(code);
             if (obj.length == 0) return true;
             obj = obj[0];
             switch (b.type) {
