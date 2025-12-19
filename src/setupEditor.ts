@@ -1,7 +1,7 @@
 import { once } from "es-toolkit";
 import { loadScript } from "./utils/dom/loadScript";
 
-import { fs } from '@/scripts/fs';
+import { fs } from '@/services/fs';
 import { editor_config } from "./scripts/editor_config";
 import { editor_util_wrapper } from "./scripts/editor_util";
 import { editor_game_wrapper } from "./scripts/editor_game";

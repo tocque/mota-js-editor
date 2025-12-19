@@ -3,11 +3,6 @@ import { removeWhiteBackground } from "@/utils/canvas/removeWhiteBackground";
 import { disableImageSmoothing } from "@/utils/canvas/disableImageSmoothing";
 import type { GridPOD } from "@/utils/coordinate";
 
-// Global types for legacy editor APIs
-/* eslint-disable @typescript-eslint/no-explicit-any */
-declare const printe: (msg: any) => void;
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
 /**
  * 加载图像（纯函数）
  */
