@@ -3,4 +3,5 @@
  */
 
 export * from "./codeTransformers";
+export * from "./createTernServer";
 export * from "./ternDefinitions";

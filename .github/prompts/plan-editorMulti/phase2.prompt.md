@@ -1,50 +1,46 @@
-## Plan: editor_multi 重构 Phase 2 - 服务层封装
+## Plan: editor_multi 重构 Phase 2 - 工具函数迁移与 Tern 工厂
 
-将 CodeMirror、Tern、JSHint、Beautifier 的操作封装为独立服务类，提供清晰的 API 边界。此阶段**原模块仅添加 import 语句**，逻辑保持不变。
+迁移 `editor.util` 依赖到独立模块，创建 Tern 初始化工厂函数。此阶段**不创建服务类**，保持简洁。
 
 ### Background
 
-- Phase 1 已完成纯函数提取
-- CodeMirror 依赖不更换
-- 需要支持 `useEditor` 和 `useGameData` 的访问模式
+- Phase 1 已完成纯函数提取（`codeTransformers`、`ternDefinitions`、`commands`）
+- `fs.promises` 已存在于 `src/services/fs`，无需再封装
+- CodeMirror/JSHINT/beautifier 的 API 已足够简洁，不需要额外封装层
+- `editor.util.encode64`/`decode64`/`guid` 等函数需要迁移到 `src/utils`
 
 ### Steps
 
-1. **创建 CodeMirror 服务** `src/Workbench/CodeEditor/services/CodeEditorService.ts`
-   - 封装 CodeMirror 实例的创建和配置
-   - 方法：`createEditor(element, options)`, `setValue(value)`, `getValue()`, `scrollTo(x, y)`, `getScrollInfo()`, `setOption(key, value)`, `getWrapperElement()`
-   - 持有 CodeMirror 实例引用，对外隐藏实现细节
+1. **迁移编码工具函数** `src/utils/encoding.ts`
+   - `encode64(str: string): string` - Base64 编码（UTF-8 安全）
+   - `decode64(str: string): string` - Base64 解码（UTF-8 安全）
+   - 从 `editor.util` 提取实现逻辑，使其成为独立纯函数
+   - 编写单测 `src/utils/__tests__/encoding.test.ts`
 
-2. **创建 Tern 服务** `src/Workbench/CodeEditor/services/TernService.ts`
-   - 封装 TernServer 初始化和文档管理
-   - 方法：`init(defs)`, `addDoc(name, doc)`, `delDoc(name)`, `complete(cm)`, `updateArgHints(cm)`, `showDocs(cm)`, `jumpToDef(cm)`, `rename(cm)`
-   - 使用 Phase 1 的 `buildTernDefinitions` 构建 defs
+2. **创建 Tern 工厂函数** `src/Workbench/CodeEditor/utils/createTernServer.ts`
+   - `createTernServer(coredef, CodeMirror)` - 简单工厂函数，不是服务类
+   - 内部调用 `buildTernDefinitions` 构建定义
+   - 返回初始化好的 TernServer 实例
+   - 编写单测验证初始化逻辑
 
-3. **创建 Lint 服务** `src/Workbench/CodeEditor/services/LintService.ts`
-   - 封装 JSHint 检查逻辑
-   - 方法：`hasErrors()`, `getErrors()`, `setEnabled(enabled)`
-   - 配置 esversion: 2021
+3. **更新 utils/index.ts 导出**
+   - 添加 `createTernServer` 导出
 
-4. **创建格式化服务** `src/Workbench/CodeEditor/services/FormatterService.ts`
-   - 封装 beautifier.js 调用
-   - 方法：`format(code, options)` 返回格式化后的代码
-   - 默认选项：`brace_style: "collapse-preserve-inline"`, `indent_with_tabs: true`
+4. **确认 GUID 生成器** 
+   - Phase 1 已有 `defaultGuidGenerator` 在 `codeTransformers.ts`
+   - 如果 `editor.util.guid` 有不同实现，评估是否需要统一
 
-5. **创建文件操作服务** `src/Workbench/CodeEditor/services/FileService.ts`
-   - 封装 `fs.readFile` 和 `fs.writeFile` 的 Promise 版本
-   - 方法：`readFile(path)`, `writeFile(path, content)`
-   - 使用 `editor.util.encode64` / `decode64` 处理编码
+### 不做的事情（避免过度设计）
 
-6. **创建服务导出索引** `src/Workbench/CodeEditor/services/index.ts`
-   - 统一导出所有服务类
-
-7. **编写服务层单测** `src/Workbench/CodeEditor/__tests__/services.test.ts`
-   - Mock CodeMirror、JSHINT、beautifier 全局对象
-   - 测试各服务类的核心方法
+- ❌ CodeEditorService - 直接使用 CodeMirror API
+- ❌ LintService - 直接使用 `JSHINT.errors.filter(...)`
+- ❌ FormatterService - 直接使用 `beautifier.js(code, options)`
+- ❌ FileService - 使用已有的 `src/services/fs`
 
 ### Acceptance Criteria
 
-- [ ] 服务类可独立实例化和测试
-- [ ] 服务类不直接访问 DOM
-- [ ] `editor_multi.ts` 仅在顶部添加 import，内部逻辑不变
+- [ ] `encode64`/`decode64` 可独立导入使用，不依赖 `editor` 全局变量
+- [ ] `createTernServer` 工厂函数可正常创建 TernServer
+- [ ] 所有新增函数有单测覆盖
+- [ ] `editor_multi.ts` 暂不修改（Phase 3 再整合）
 - [ ] `window.editor_multi` 功能不受影响
