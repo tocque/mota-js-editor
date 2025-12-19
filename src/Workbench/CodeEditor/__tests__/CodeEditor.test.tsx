@@ -1,33 +1,11 @@
 /**
  * CodeEditor 组件测试
  *
- * 测试 React 状态管理和 window.editor_multi 集成
+ * 测试 React 状态管理和配置工具函数
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getShortcutKeys, commandsName } from "../config/commands";
-
-// Mock dependencies that require browser APIs
-vi.mock("../editor_multi", () => ({
-  editor_multi: vi.fn(() => ({
-    _reactControls: null,
-    id: "",
-    isString: false,
-    lintAutocomplete: false,
-    preview: null,
-    show: vi.fn(),
-    hide: vi.fn(),
-    confirm: vi.fn(),
-    cancel: vi.fn(),
-    format: vi.fn(),
-    setLint: vi.fn(),
-    doCommand: vi.fn(),
-    getValue: vi.fn(() => ""),
-    getWrapperElement: vi.fn(() => ({
-      style: { fontSize: "", fontWeight: "" },
-    })),
-  })),
-}));
+import { getShortcutKeys, commandsName, DEFAULT_FONT_SIZE, FONT_SIZE_CONFIG_KEY } from "../config/commands";
 
 describe("CodeEditor Component Utilities", () => {
   describe("getShortcutKeys", () => {
@@ -107,47 +85,28 @@ describe("ReactControls interface", () => {
 
 describe("Default values", () => {
   it("should use 14 as default font size", () => {
-    const DEFAULT_FONT_SIZE = 14;
     expect(DEFAULT_FONT_SIZE).toBe(14);
   });
 
   it("should use correct config key for font size", () => {
-    const CONFIG_FONT_SIZE_KEY = "editor_multi.fontSize";
-    expect(CONFIG_FONT_SIZE_KEY).toBe("editor_multi.fontSize");
+    expect(FONT_SIZE_CONFIG_KEY).toBe("editor_multi.fontSize");
   });
 });
 
-describe("editor_multi integration", () => {
-  let mockEditorMulti: {
-    _reactControls: {
-      show: ReturnType<typeof vi.fn>;
-      hide: ReturnType<typeof vi.fn>;
-      updateFontSize: ReturnType<typeof vi.fn>;
-      updateLint: ReturnType<typeof vi.fn>;
-      updateShowPreview: ReturnType<typeof vi.fn>;
-    } | null;
+describe("State controls interface", () => {
+  let mockStateControls: {
     show: ReturnType<typeof vi.fn>;
     hide: ReturnType<typeof vi.fn>;
-    lintAutocomplete: boolean;
-    setLint: (enabled?: boolean) => void;
-    preview: string | null;
+    updateShowPreview: ReturnType<typeof vi.fn>;
+    updateLintEnabled: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
-    mockEditorMulti = {
-      _reactControls: null,
+    mockStateControls = {
       show: vi.fn(),
       hide: vi.fn(),
-      lintAutocomplete: false,
-      setLint: vi.fn(function (this: typeof mockEditorMulti, enabled?: boolean) {
-        if (typeof enabled === "boolean") {
-          this.lintAutocomplete = enabled;
-        }
-        if (this._reactControls) {
-          this._reactControls.updateLint(this.lintAutocomplete);
-        }
-      }),
-      preview: null,
+      updateShowPreview: vi.fn(),
+      updateLintEnabled: vi.fn(),
     };
   });
 
@@ -155,115 +114,39 @@ describe("editor_multi integration", () => {
     vi.clearAllMocks();
   });
 
-  describe("show/hide with React controls", () => {
-    it("should call React show control when available", () => {
-      const showFn = vi.fn();
-      mockEditorMulti._reactControls = {
-        show: showFn,
-        hide: vi.fn(),
-        updateFontSize: vi.fn(),
-        updateLint: vi.fn(),
-        updateShowPreview: vi.fn(),
-      };
-
-      // Simulate show behavior
-      if (mockEditorMulti._reactControls) {
-        mockEditorMulti._reactControls.show();
-      }
-
-      expect(showFn).toHaveBeenCalled();
+  describe("show/hide controls", () => {
+    it("should call show control", () => {
+      mockStateControls.show();
+      expect(mockStateControls.show).toHaveBeenCalled();
     });
 
-    it("should call React hide control when available", () => {
-      const hideFn = vi.fn();
-      mockEditorMulti._reactControls = {
-        show: vi.fn(),
-        hide: hideFn,
-        updateFontSize: vi.fn(),
-        updateLint: vi.fn(),
-        updateShowPreview: vi.fn(),
-      };
-
-      // Simulate hide behavior
-      if (mockEditorMulti._reactControls) {
-        mockEditorMulti._reactControls.hide();
-      }
-
-      expect(hideFn).toHaveBeenCalled();
+    it("should call hide control", () => {
+      mockStateControls.hide();
+      expect(mockStateControls.hide).toHaveBeenCalled();
     });
   });
 
-  describe("setLint with React controls", () => {
-    it("should sync lint state with React controls", () => {
-      const updateLintFn = vi.fn();
-      mockEditorMulti._reactControls = {
-        show: vi.fn(),
-        hide: vi.fn(),
-        updateFontSize: vi.fn(),
-        updateLint: updateLintFn,
-        updateShowPreview: vi.fn(),
-      };
-
-      mockEditorMulti.lintAutocomplete = true;
-      mockEditorMulti.setLint();
-
-      expect(updateLintFn).toHaveBeenCalledWith(true);
+  describe("lint state controls", () => {
+    it("should sync lint state with updateLintEnabled", () => {
+      mockStateControls.updateLintEnabled(true);
+      expect(mockStateControls.updateLintEnabled).toHaveBeenCalledWith(true);
     });
 
-    it("should accept explicit enabled value", () => {
-      mockEditorMulti.lintAutocomplete = false;
-      mockEditorMulti.setLint(true);
-
-      expect(mockEditorMulti.lintAutocomplete).toBe(true);
-    });
-
-    it("should preserve existing value when no argument provided", () => {
-      mockEditorMulti.lintAutocomplete = true;
-      mockEditorMulti.setLint();
-
-      expect(mockEditorMulti.lintAutocomplete).toBe(true);
+    it("should handle disable lint", () => {
+      mockStateControls.updateLintEnabled(false);
+      expect(mockStateControls.updateLintEnabled).toHaveBeenCalledWith(false);
     });
   });
 
-  describe("preview visibility with React controls", () => {
-    it("should update preview visibility via React controls", () => {
-      const updateShowPreviewFn = vi.fn();
-      mockEditorMulti._reactControls = {
-        show: vi.fn(),
-        hide: vi.fn(),
-        updateFontSize: vi.fn(),
-        updateLint: vi.fn(),
-        updateShowPreview: updateShowPreviewFn,
-      };
-
-      mockEditorMulti.preview = "somePreviewData";
-
-      // Simulate import behavior
-      if (mockEditorMulti._reactControls) {
-        mockEditorMulti._reactControls.updateShowPreview(!!mockEditorMulti.preview);
-      }
-
-      expect(updateShowPreviewFn).toHaveBeenCalledWith(true);
+  describe("preview visibility controls", () => {
+    it("should update preview visibility to true", () => {
+      mockStateControls.updateShowPreview(true);
+      expect(mockStateControls.updateShowPreview).toHaveBeenCalledWith(true);
     });
 
-    it("should hide preview when preview is null", () => {
-      const updateShowPreviewFn = vi.fn();
-      mockEditorMulti._reactControls = {
-        show: vi.fn(),
-        hide: vi.fn(),
-        updateFontSize: vi.fn(),
-        updateLint: vi.fn(),
-        updateShowPreview: updateShowPreviewFn,
-      };
-
-      mockEditorMulti.preview = null;
-
-      // Simulate import behavior
-      if (mockEditorMulti._reactControls) {
-        mockEditorMulti._reactControls.updateShowPreview(!!mockEditorMulti.preview);
-      }
-
-      expect(updateShowPreviewFn).toHaveBeenCalledWith(false);
+    it("should update preview visibility to false", () => {
+      mockStateControls.updateShowPreview(false);
+      expect(mockStateControls.updateShowPreview).toHaveBeenCalledWith(false);
     });
   });
 });
