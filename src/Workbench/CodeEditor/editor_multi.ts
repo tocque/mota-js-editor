@@ -1,8 +1,18 @@
+import { encode64, decode64 } from "@/utils/encoding";
+import { defaultGuidGenerator } from "./utils/codeTransformers";
 
+// React controls interface - will be injected by the React component
+interface ReactControls {
+    show: () => void;
+    hide: () => void;
+    updateFontSize: (size: number, bold: boolean) => void;
+    updateLint: (enabled: boolean) => void;
+    updateShowPreview: (show: boolean) => void;
+}
 
 export const editor_multi = function () {
 
-    var editor_multi = {};
+    var editor_multi: Record<string, any> & { _reactControls?: ReactControls } = {};
 
     var extraKeys = {
         "Ctrl-/": function (cm) { cm.toggleComment(); },
@@ -230,12 +240,26 @@ export const editor_multi = function () {
         //try{eval('function _asdygakufyg_() { return '+valueNow+'\n}');editor_multi.lintAutocomplete=true;}catch(ee){}
         if (valueNow.slice(0, 8) === 'function') editor_multi.lintAutocomplete = true;
         editor_multi.setLint();
-        document.getElementById('left7').style = '';
+        // Use React controls if available, fallback to DOM manipulation
+        if (editor_multi._reactControls) {
+            editor_multi._reactControls.show();
+        } else {
+            document.getElementById('left7').style = '';
+        }
     }
     editor_multi.hide = function () {
-        document.getElementById('left7').style = 'z-index:-1;opacity: 0;';
+        // Use React controls if available, fallback to DOM manipulation
+        if (editor_multi._reactControls) {
+            editor_multi._reactControls.hide();
+        } else {
+            document.getElementById('left7').style = 'z-index:-1;opacity: 0;';
+        }
     }
-    editor_multi.setLint = function () {
+    editor_multi.setLint = function (enabled?: boolean) {
+        // If explicit value provided, use it
+        if (typeof enabled === 'boolean') {
+            editor_multi.lintAutocomplete = enabled;
+        }
         if (editor_multi.lintAutocomplete) {
             codeEditor.setOption("lint", {
                 options: {
@@ -246,7 +270,12 @@ export const editor_multi = function () {
             codeEditor.setOption("lint", false);
         }
         codeEditor.setOption("autocomplete", editor_multi.lintAutocomplete);
-        document.getElementById("lintCheckbox").checked = editor_multi.lintAutocomplete;
+        // Sync with React state if available
+        if (editor_multi._reactControls) {
+            editor_multi._reactControls.updateLint(editor_multi.lintAutocomplete);
+        } else {
+            document.getElementById("lintCheckbox").checked = editor_multi.lintAutocomplete;
+        }
     }
     editor_multi.toggerLint = function () {
         editor_multi.lintAutocomplete = document.getElementById("lintCheckbox").checked;
@@ -290,17 +319,7 @@ export const editor_multi = function () {
         }).length > 0;
     }
 
-    var _previewButton = document.getElementById('editor_multi_preview');
-
-    _previewButton.onclick = function () {
-        if (!editor_multi.preview) return;
-        _format();
-        if (editor_multi.hasError()) {
-            alert("当前好像存在严重的语法错误，请处理后再预览。");
-            return;
-        }
-        editor.uievent.previewEditorMulti(editor_multi.preview, codeEditor.getValue());
-    }
+    // Preview button is now handled by React component
 
     editor_multi.import = function (id_, args) {
         var thisTr = document.getElementById(id_);
@@ -313,7 +332,13 @@ export const editor_multi = function () {
         editor_multi.isString = false;
         editor_multi.lintAutocomplete = false;
         editor_multi.preview = args.preview;
-        _previewButton.style.display = editor_multi.preview ? 'inline' : 'none';
+        // Update preview button visibility via React or fallback to DOM
+        if (editor_multi._reactControls) {
+            editor_multi._reactControls.updateShowPreview(!!editor_multi.preview);
+        } else {
+            var _previewButton = document.getElementById('editor_multi_preview');
+            if (_previewButton) _previewButton.style.display = editor_multi.preview ? 'inline' : 'none';
+        }
         if (args.lint === true) editor_multi.lintAutocomplete = true;
         if ((!input.value || input.value == 'null') && args.template)
             input.value = '"' + args.template + '"';
@@ -329,7 +354,7 @@ export const editor_multi = function () {
             var tmap = {};
             var tstr = JSON.stringify(tobj, function (k, v) {
                 if (typeof (v) === typeof ('') && v.slice(0, 8) === 'function') {
-                    var id_ = editor.util.guid();
+                    var id_ = defaultGuidGenerator();
                     tmap[id_] = v.toString();
                     return id_;
                 } else return v
@@ -387,7 +412,7 @@ export const editor_multi = function () {
                 var tmap = {};
                 var tstr = JSON.stringify(tobj, function (k, v) {
                     if (v instanceof Function) {
-                        var id_ = editor.util.guid();
+                        var id_ = defaultGuidGenerator();
                         tmap[id_] = v.toString();
                         return id_;
                     } else return v
@@ -458,14 +483,14 @@ export const editor_multi = function () {
                 editor_multi.id = ''
                 return;
             }
-            var str = editor.util.decode64(d)
+            var str = decode64(d)
             _setValue(str)
             _fileValues[1] = str
         })
     }
 
     editor_multi.writeFileDone = function (keep) {
-        fs.writeFile(_fileValues[0], editor.util.encode64(codeEditor.getValue() || ''), 'base64', function (err, data) {
+        fs.writeFile(_fileValues[0], encode64(codeEditor.getValue() || ''), 'base64', function (err, data) {
             if (err) printe('文件写入失败,请手动粘贴至' + _fileValues[0] + '\n' + err);
             else {
                 if (!keep) {
@@ -494,20 +519,13 @@ export const editor_multi = function () {
         editor_multi.importFile(dict[mod])
     }
 
-    // 字体大小
-    {
-        const CONFIG_KEY = "editor_multi.fontSize";
-        let fontsize = editor.config.get(CONFIG_KEY, 14);
-        const input = document.getElementById("editor_multi_fontsize");
-        const check = document.getElementById("editor_multi_fontweight")
-        input.value = fontsize;
-        editor_multi.setFontSize = function () {
-            const value = Number(input.value);
-            editor.config.set(CONFIG_KEY, value);
-            const ele = codeEditor.getWrapperElement()
-            ele.style.fontSize = `${value}px`;
-            ele.style.fontWeight = `${check.checked ? 'bold' : 'normal'}`
-        }
+    // Expose getValue and getWrapperElement for React component
+    editor_multi.getValue = function() {
+        return codeEditor.getValue();
+    }
+    
+    editor_multi.getWrapperElement = function() {
+        return codeEditor.getWrapperElement();
     }
 
     return editor_multi;
