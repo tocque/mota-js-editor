@@ -1,4 +1,4 @@
-import JSHINT from "jshint";
+import { JSHINT } from "jshint";
 import beautifier from 'js-beautify';
 import { encode64, decode64 } from "@/utils/encoding";
 import { defaultGuidGenerator } from "./utils/codeTransformers";
