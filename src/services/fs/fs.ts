@@ -120,14 +120,14 @@ function postData(data: string | null, endpoint: string, callback: Callback): vo
     "POST",
     endpoint,
     data,
-    function (response) {
+    (response) => {
       if (response.slice(0, 6) === "error:") {
         callback(response, null);
       } else {
         callback(null, response);
       }
     },
-    function (e) {
+    (e) => {
       if ((window as unknown as { main: unknown }).main != null) {
         console.log(e);
       } else {
@@ -248,7 +248,7 @@ export const fs: Fs = {
       throw "Type Error in fs.readdir";
     }
     const data = "name=" + path;
-    postData(data, "/listFile", function (err, response) {
+    postData(data, "/listFile", (err, response) => {
       let parsedData: string[] | null = null;
       try {
         parsedData = JSON.parse(response as string);

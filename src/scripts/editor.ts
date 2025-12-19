@@ -255,7 +255,6 @@ editor.prototype.init = function (callback) {
                 editor.mode.commonevent();
                 editor.mode.showMode('tower');
                 
-                editor_multi = editor_multi();
                 editor_blockly = editor_blockly();
         
                 // --- 所有用到的flags

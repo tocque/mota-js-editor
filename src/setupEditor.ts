@@ -16,7 +16,6 @@ import { editor_materialpanel_wrapper } from "./scripts/editor_materialpanel";
 import { editor_listen_wrapper } from "./scripts/editor_listen";
 import localforage from "localforage";
 import { MotaActionParser } from "./scripts/MotaActionParser";
-import { editor_multi } from "./scripts/editor_multi";
 import "./scripts/blockly";
 import { editor_blockly } from "./scripts/editor_blockly";
 import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
@@ -46,7 +45,6 @@ export const setupEditor = once(async () => {
   window.LZString = LZString;
   window.localforage = localforage;
   window.editor = createEditor();
-  window.editor_multi = editor_multi;
   window.MotaActionParser = MotaActionParser;
   window.editor_blockly = editor_blockly;
   window.editor_blocklyconfig = editor_blocklyconfig;

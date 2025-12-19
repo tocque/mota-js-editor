@@ -1,6 +1,13 @@
+import { useEditor } from "@/stores/EditorStore";
 import type { FC } from "react";
+import { editor_multi as createCodeEditor } from "./editor_multi";
 
 export const CodeEditor: FC = () => {
+
+  useEditor(() => {
+    window.editor_multi = createCodeEditor();
+  });
+
   return (
     <div id="left7" style={{ zIndex: -1, opacity: 0 }}>
       {/* 多行文本编辑器 */}

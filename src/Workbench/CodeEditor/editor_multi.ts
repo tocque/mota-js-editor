@@ -383,7 +383,7 @@ export const editor_multi = function () {
             if (editor_multi.isString) {
                 input.value = JSON.stringify(value);
             } else {
-                eval('var tobj=' + (value || 'null'));
+                let tobj = eval(`(${(value || 'null')})`);
                 var tmap = {};
                 var tstr = JSON.stringify(tobj, function (k, v) {
                     if (v instanceof Function) {
