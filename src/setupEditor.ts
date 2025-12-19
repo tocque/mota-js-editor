@@ -22,7 +22,13 @@ import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
 import * as LZString from "lz-string";
 import CodeMirror from "codemirror";
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/addon/search/search';
+import 'codemirror/addon/search/searchcursor';
+import 'codemirror/addon/dialog/dialog';
+import 'codemirror/addon/dialog/dialog.css';
+import 'codemirror/addon/tern/tern';
 import 'codemirror/lib/codemirror.css';
+import * as tern from 'tern';
 import { createEditor } from "./scripts/editor";
 import Awesomplete from "awesomplete";
 
@@ -49,17 +55,13 @@ export const setupEditor = once(async () => {
   window.editor_blockly = editor_blockly;
   window.editor_blocklyconfig = editor_blocklyconfig;
   window.CodeMirror = CodeMirror;
+  window.tern = tern;
   window.Awesomplete = Awesomplete;
 
   const scriptList = [
     'libs/thirdparty/zip.min.js',
     '_server/blockly/Converter.bundle.min.js',
-    '_server/CodeMirror/beautify.min.js',
-    '_server/CodeMirror/jshint.min.js',
-    '_server/CodeMirror/codeMirror.plugin.min.js',
-    '_server/CodeMirror/acorn.min.js',
     '_server/CodeMirror/defs.js',
-    '_server/CodeMirror/tern.min.js',
     '_server/thirdparty/color.all.min.js',
     '_server/thirdparty/caret-position.js',
     '_server/thirdparty/jsColor.js'

@@ -21,5 +21,6 @@ interface Window {
   printf: (msg: string) => void;
   printe: (msg: unknown) => void;
   printi: (msg: string) => void;
+  tern: typeof import('tern')
 }
 
