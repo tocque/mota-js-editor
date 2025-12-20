@@ -266,21 +266,21 @@ export const CodeEditor: FC = () => {
 
     // 创建 extraKeys 配置
     const extraKeys: CodeMirror.KeyMap = {
-      "Ctrl-/": (cm: unknown) => {
-        (cm as CodeMirrorInstance & { toggleComment: () => void }).toggleComment();
+      "Ctrl-/": (cm) => {
+        cm.toggleComment();
       },
-      "Ctrl-B": (cm: unknown) => {
-        ternServerRef.current?.jumpToDef(cm as CodeMirror.Editor);
+      "Ctrl-B": (cm) => {
+        ternServerRef.current?.jumpToDef(cm);
       },
-      "Ctrl-Q": (cm: unknown) => {
-        ternServerRef.current?.rename(cm as CodeMirror.Editor);
+      "Ctrl-Q": (cm) => {
+        ternServerRef.current?.rename(cm);
       },
       "Cmd-F": CodeMirror.commands.findPersistent,
       "Ctrl-F": CodeMirror.commands.findPersistent,
       "Ctrl-R": CodeMirror.commands.replaceAll,
-      "Ctrl-D": (cm: unknown) => {
-        const cursor = (cm as CodeMirrorInstance).getCursor();
-        (cm as CodeMirrorInstance).foldCode(cursor);
+      "Ctrl-D": (cm) => {
+        const cursor = cm.getCursor();
+        cm.foldCode(cursor);
       },
       "Ctrl-O": () => openUrl(API_DOCS_URL),
       "Ctrl-P": () => openUrl(PLUGINS_URL),

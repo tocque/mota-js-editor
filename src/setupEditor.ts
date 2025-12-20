@@ -22,6 +22,7 @@ import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
 import * as LZString from "lz-string";
 import CodeMirror from "codemirror";
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/addon/comment/comment';
 import 'codemirror/addon/search/search';
 import 'codemirror/addon/search/searchcursor';
 import 'codemirror/addon/dialog/dialog';
