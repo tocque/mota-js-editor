@@ -4,7 +4,7 @@
  * 包含快捷键映射、命令名称、注释文件路径等配置。
  */
 
-import type { CommandsNameMap, CommentFilePathMap, ShortcutKey } from "../types";
+import type { CommandsNameMap, CommentFilePathMap, ShortcutKey } from "../types/index";
 
 /**
  * 命令名称映射
