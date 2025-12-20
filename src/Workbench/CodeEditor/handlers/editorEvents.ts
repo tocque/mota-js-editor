@@ -4,16 +4,8 @@
  * 处理 cursorActivity 和 keyup 事件，用于自动补全和参数提示。
  */
 
+import type { Editor } from "codemirror";
 import type { TernServerInstance } from "../utils/createTernServer";
-
-/**
- * CodeMirror 编辑器实例接口（简化版）
- */
-export interface CodeMirrorEditor {
-  on: (event: string, handler: (cm: unknown, event?: KeyboardEvent) => void) => void;
-  getCursor: () => { line: number; ch: number };
-  getOption: (name: string) => unknown;
-}
 
 /**
  * 设置编辑器事件监听
@@ -23,7 +15,7 @@ export interface CodeMirrorEditor {
  * @param getAutocomplete - 获取当前自动补全状态的函数
  */
 export function setupEditorEvents(
-  codeEditor: CodeMirrorEditor,
+  codeEditor: Editor,
   ternServer: TernServerInstance,
   getAutocomplete: () => boolean
 ): void {

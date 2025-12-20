@@ -4,6 +4,8 @@
  * 创建并初始化 Tern.js 服务器实例，用于代码编辑器的智能提示和自动补全。
  */
 
+import CodeMirror, { TernServer } from "codemirror";
+import type * as Tern from "tern";
 import type {
   CoreType,
   DataCommentType,
@@ -25,37 +27,10 @@ export interface TernServerOptions {
 }
 
 /**
- * Tern Server 实例接口
- * 简化的类型定义，仅包含常用方法
+ * TernServer 实例类型别名
+ * 直接使用 @types/codemirror 提供的类型
  */
-export interface TernServerInstance {
-  /** 添加文档 */
-  addDoc: (name: string, doc: unknown) => void;
-  /** 删除文档 */
-  delDoc: (name: string) => void;
-  /** 触发自动补全 */
-  complete: (cm: unknown) => void;
-  /** 更新参数提示 */
-  updateArgHints: (cm: unknown) => void;
-  /** 显示文档 */
-  showDocs: (cm: unknown) => void;
-  /** 跳转到定义 */
-  jumpToDef: (cm: unknown) => void;
-  /** 重命名变量 */
-  rename: (cm: unknown) => void;
-}
-
-/**
- * CodeMirror 接口（简化版，仅包含 TernServer 相关部分）
- */
-export interface CodeMirrorWithTern {
-  TernServer: new (options: {
-    defs: unknown[];
-    plugins: Record<string, boolean>;
-    useWorker: boolean;
-  }) => TernServerInstance;
-  Doc: new (value: string, mode: string) => unknown;
-}
+export type TernServerInstance = TernServer;
 
 /**
  * 创建 Tern Server 实例
@@ -85,11 +60,10 @@ export interface CodeMirrorWithTern {
  * ```
  */
 export function createTernServer(options: {
-  ternDefs: unknown[];
+  ternDefs: Tern.Def[];
   core: CoreType;
   functions: FunctionsType;
   dataComment: DataCommentType;
-  CodeMirror: CodeMirrorWithTern;
   serverOptions?: TernServerOptions;
 }): TernServerInstance {
   const {
@@ -97,7 +71,6 @@ export function createTernServer(options: {
     core,
     functions,
     dataComment,
-    CodeMirror,
     serverOptions = {},
   } = options;
 
@@ -116,12 +89,12 @@ export function createTernServer(options: {
   buildTernDefinitions(coredef, core, functions, dataComment);
 
   // 创建 TernServer 实例
-  const ternServer = new CodeMirror.TernServer({
+  const ternServer = new TernServer({
     defs: ternDefs,
     plugins: {
       doc_comment: docComment,
       complete_strings: completeStrings,
-    },
+    } as unknown as Tern.ConstructorOptions["plugins"],
     useWorker,
   });
 
@@ -132,14 +105,12 @@ export function createTernServer(options: {
  * 为 TernServer 添加新文档
  *
  * @param ternServer - TernServer 实例
- * @param CodeMirror - CodeMirror 对象
  * @param name - 文档名称
  * @param value - 文档内容
  * @param mode - 文档模式，默认 'javascript'
  */
 export function addTernDocument(
   ternServer: TernServerInstance,
-  CodeMirror: CodeMirrorWithTern,
   name: string,
   value: string,
   mode = "javascript"

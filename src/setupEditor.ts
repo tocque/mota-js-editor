@@ -26,6 +26,8 @@ import 'codemirror/addon/search/search';
 import 'codemirror/addon/search/searchcursor';
 import 'codemirror/addon/dialog/dialog';
 import 'codemirror/addon/dialog/dialog.css';
+import 'codemirror/addon/fold/foldcode';
+import 'codemirror/addon/lint/lint';
 import 'codemirror/addon/tern/tern';
 import 'codemirror/lib/codemirror.css';
 import * as tern from 'tern';

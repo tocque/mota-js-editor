@@ -1,3 +1,9 @@
+# 项目背景
+
+该项目是一个重构迁移项目，原始代码在 public 中备用
+其中的大部分代码已经提取到 src/scripts 下
+目前的需求是从 src/scripts 下提取模块，将其慢慢移除以完成重构迁移。
+
 # 代码风格指南
 
 ## 单元测试
@@ -30,3 +36,49 @@
 3. **测试错误处理和异常情况**
 4. **测试异步操作的正确性**
 5. **测试模块间的集成行为**
+
+## 类型声明
+
+### 全局类型声明
+
+1. **集中管理全局变量类型**
+   - 所有全局变量（如 `core`、`editor`、`fs` 等）的类型声明应放在 `src/vite-env.d.ts` 中
+   - 使用 `declare global { }` 块来声明全局变量
+   - 为 `Window` 接口添加扩展以支持 `window.xxx` 访问
+
+2. **使用已有的类型定义**
+   - 如果库提供了 `@types/xxx` 包，直接使用而不是重新声明
+   - 在 `vite-env.d.ts` 中添加 `/// <reference types="xxx" />` 引用
+   - 示例：使用 `@types/codemirror` 而不是手动声明 CodeMirror 类型
+
+3. **避免在组件文件中声明全局类型**
+   - 组件文件（如 `.tsx`）中不应包含 `declare const` 语句
+   - 全局变量声明集中到 `vite-env.d.ts` 便于维护和查找
+
+### 模块引用
+
+1. **优先使用模块导入而非全局变量**
+   - 如果模块提供了导出，使用 `import` 导入而不是依赖全局变量
+   - 示例：使用 `import { fs } from "@/services/fs"` 而不是全局 `fs`
+
+2. **类型从源模块导入**
+   - 类型定义应该从定义它们的模块导入：`import type { Xxx } from "@/path/to/module"`
+   - 避免在多处重复定义相同的接口
+
+## 工具函数
+
+### 通用函数提取原则
+
+1. **识别可复用的通用函数**
+   - 如果一个函数不依赖特定业务上下文，应考虑提取到 `src/utils`
+   - 常见的通用函数类型：字符串处理、JSON 操作、编码/解码、数学计算
+
+2. **保持向后兼容**
+   - 从原模块重导出函数以保持现有代码正常工作
+   - 使用 `export { fn as alias } from "@/utils/xxx"` 重导出
+
+3. **`src/utils` 目录结构**
+   - `encoding.ts` - Base64 编码/解码
+   - `json.ts` - JSON 相关工具（`generateGuid`、`safeJsonParse`）
+   - `string.ts` - 字符串处理（`escapeNewlines`、`unescapeNewlines`）
+   - 每个文件应该专注于单一职责

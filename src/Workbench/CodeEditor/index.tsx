@@ -1,65 +1,24 @@
 import { useEditor } from "@/stores/EditorStore";
 import { useCurrentFn } from "@/hooks/useCurrentFn";
 import { useState, useCallback, type FC, useRef } from "react";
+import CodeMirror from "codemirror";
+import { JSHINT } from "jshint";
+import beautifier from "js-beautify";
 import {
   commandsName,
   getShortcutKeys,
-  createExtraKeys,
   DEFAULT_CODEMIRROR_OPTIONS,
   FONT_SIZE_CONFIG_KEY,
   DEFAULT_FONT_SIZE,
   API_DOCS_URL,
   PLUGINS_URL,
+  JSHINT_OPTIONS,
 } from "./config/commands";
 import { createTernServer, type TernServerInstance } from "./utils/createTernServer";
 import { setupEditorEvents } from "./handlers/editorEvents";
-import { createLegacyApi, type CodeMirrorInstance } from "./createLegacyApi";
-
-// 声明全局 CodeMirror 和游戏对象
-declare const CodeMirror: {
-  fromTextArea: (
-    textarea: HTMLTextAreaElement,
-    options: Record<string, unknown>
-  ) => CodeMirrorInstance & {
-    on: (event: string, handler: (cm: unknown, event?: KeyboardEvent) => void) => void;
-    getCursor: () => { line: number; ch: number };
-    getOption: (name: string) => unknown;
-  };
-  commands: {
-    findPersistent: unknown;
-    replaceAll: unknown;
-  };
-  TernServer: new (options: {
-    defs: unknown[];
-    plugins: Record<string, boolean>;
-    useWorker: boolean;
-  }) => TernServerInstance;
-  Doc: new (value: string, mode: string) => unknown;
-};
-
-declare const core: import("./types").CoreType;
-declare const functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a: import("./types").FunctionsType;
-declare const data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc: import("./types").DataCommentType;
-declare const terndefs_f6783a0a_522d_417e_8407_94c67b692e50: unknown[];
-declare const selectBox: { isSelected: (value: boolean) => void } | undefined;
-declare const editor_mode: { mode: string } | undefined;
-declare const editor: {
-  isMobile?: boolean;
-  mode?: { indent?: (field: string) => string };
-  config?: {
-    get?: (key: string, defaultValue: number) => number;
-    set?: (key: string, value: number) => void;
-  };
-  uievent?: {
-    previewEditorMulti?: (preview: unknown, value: string) => void;
-  };
-} | undefined;
-declare const fs: {
-  readFile: (path: string, encoding: string, callback: (err: Error | null, data?: string) => void) => void;
-  writeFile: (path: string, data: string, encoding: string, callback: (err: Error | null, data?: unknown) => void) => void;
-};
-declare function printf(message: string): void;
-declare function printe(message: string): void;
+import { createHandler, type EditContext, type EditorConfig, type Handler } from "./contexts";
+import type { CodeMirrorInstance, EditorMultiApi } from "./types";
+import { isString } from "es-toolkit";
 
 export const CodeEditor: FC = () => {
   // ========== React State ==========
@@ -71,13 +30,15 @@ export const CodeEditor: FC = () => {
 
   // ========== Refs ==========
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const codeEditorRef = useRef<CodeMirrorInstance | null>(null);
-  const ternServerRef = useRef<TernServerInstance | null>(null);
-  const extraKeysRef = useRef<Record<string, (cm: unknown) => void> | null>(null);
+  const codeEditorRef = useRef<CodeMirrorInstance>(null);
+  const ternServerRef = useRef<TernServerInstance>(null);
+  const extraKeysRef = useRef<CodeMirror.KeyMap>(null);
 
-  // 状态 ref（供 handlers 访问）
+  // 当前编辑上下文
+  const contextRef = useRef<EditContext | null>(null);
+
+  // 状态 ref（供 legacy API 访问）
   const stateRef = useRef({
-    id: "",
     isString: false,
     lintAutocomplete: false,
     preview: null as unknown,
@@ -119,16 +80,85 @@ export const CodeEditor: FC = () => {
     return editor_mode?.mode || "";
   });
 
+  // ========== 编辑器核心函数 ==========
+
+  /**
+   * 设置编辑器值并更新 Tern 文档
+   */
+  const setValue = useCurrentFn((val: string) => {
+    const codeEditor = codeEditorRef.current;
+    const ternServer = ternServerRef.current;
+    if (!codeEditor) return;
+
+    codeEditor.setValue(val || "");
+    if (ternServer) {
+      ternServer.delDoc("doc");
+      ternServer.addDoc("doc", new CodeMirror.Doc(val || "", "javascript"));
+    }
+  });
+
+  /**
+   * 获取编辑器值
+   */
+  const getValue = useCurrentFn(() => {
+    return codeEditorRef.current?.getValue() || "";
+  });
+
+  /**
+   * 格式化代码
+   */
+  const format = useCurrentFn(() => {
+    if (!stateRef.current.lintAutocomplete) return;
+    const codeEditor = codeEditorRef.current;
+    if (!codeEditor) return;
+
+    const offset = codeEditor.getScrollInfo().top || 0;
+    setValue(beautifier.js(getValue(), {
+      brace_style: "collapse" as const,
+      indent_with_tabs: true,
+      jslint_happy: true,
+    }));
+    codeEditor.scrollTo(0, offset);
+  });
+
+  /**
+   * 检查是否有严重语法错误
+   */
+  const hasError = useCurrentFn(() => {
+    if (!stateRef.current.lintAutocomplete) return false;
+    return (
+      JSHINT.errors?.filter((e) => e?.code?.startsWith("E")).length > 0
+    );
+  });
+
+  /**
+   * 设置 lint 状态
+   */
+  const setLint = useCurrentFn((enabled?: boolean) => {
+    const codeEditor = codeEditorRef.current;
+    if (!codeEditor) return;
+
+    if (typeof enabled === "boolean") {
+      stateRef.current.lintAutocomplete = enabled;
+    }
+
+    if (stateRef.current.lintAutocomplete) {
+      codeEditor.setOption("lint", JSHINT_OPTIONS);
+    } else {
+      codeEditor.setOption("lint", false);
+    }
+    // autocomplete 是插件添加的配置项
+    (codeEditor as { setOption: (name: string, value: unknown) => void }).setOption("autocomplete", stateRef.current.lintAutocomplete);
+    updateLintEnabled(stateRef.current.lintAutocomplete);
+  });
+
   // ========== Event Handlers ==========
   const handleLintToggle = useCallback(() => {
     const newValue = !lintEnabled;
     setLintEnabled(newValue);
     stateRef.current.lintAutocomplete = newValue;
-    // 同步到 window.editor_multi
-    if (window.editor_multi) {
-      window.editor_multi.setLint?.(newValue);
-    }
-  }, [lintEnabled]);
+    setLint(newValue);
+  }, [lintEnabled, setLint]);
 
   const handleFontSizeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,22 +193,58 @@ export const CodeEditor: FC = () => {
 
   const handleCommandChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      window.editor_multi?.doCommand?.(e.target);
+      const value = e.target.value;
+      e.target.selectedIndex = 0;
+      if (!extraKeysRef.current || !codeEditorRef.current) return;
+      const extraKeys = extraKeysRef.current;
+      if (extraKeys[value]) {
+        if (isString(extraKeys[value])) {
+          codeEditorRef.current.execCommand(extraKeys[value]);
+        } else {
+          extraKeys[value](codeEditorRef.current);
+        }
+      }
     },
     []
   );
 
+  // ========== Handler ref（在 useEditor 中初始化）==========
+  const handlerRef = useRef<Handler | null>(null);
+
   const handleConfirm = useCallback((keep?: boolean) => {
-    window.editor_multi?.confirm?.(keep);
+    const context = contextRef.current;
+    if (!context) return;
+
+    // 统一的错误检查
+    if (stateRef.current.lintAutocomplete) {
+      const hasErrors = JSHINT.errors?.filter((e) => e?.code?.startsWith("E")).length > 0;
+      if (hasErrors) {
+        alert("当前好像存在严重的语法错误，请处理后再保存。\n严重的语法错误可能会导致整个编辑器的崩溃。");
+        return;
+      }
+    }
+
+    context.confirm(keep);
+    if (!keep) {
+      contextRef.current = null;
+    }
   }, []);
 
   const handleCancel = useCallback(() => {
-    window.editor_multi?.cancel?.();
+    const context = contextRef.current;
+    if (!context) return;
+
+    context.cancel();
+    contextRef.current = null;
   }, []);
 
   const handleFormat = useCallback(() => {
-    window.editor_multi?.format?.();
-  }, []);
+    if (!stateRef.current.lintAutocomplete) {
+      alert("只有代码才能进行格式化操作！");
+      return;
+    }
+    format();
+  }, [format]);
 
   const handlePreview = useCallback(() => {
     const preview = stateRef.current.preview;
@@ -199,33 +265,34 @@ export const CodeEditor: FC = () => {
     setFontSize(savedFontSize);
 
     // 创建 extraKeys 配置
-    const extraKeys = createExtraKeys({
-      toggleComment: (cm) => {
+    const extraKeys: CodeMirror.KeyMap = {
+      "Ctrl-/": (cm: unknown) => {
         (cm as CodeMirrorInstance & { toggleComment: () => void }).toggleComment();
       },
-      jumpToDef: (cm) => {
-        ternServerRef.current?.jumpToDef(cm);
+      "Ctrl-B": (cm: unknown) => {
+        ternServerRef.current?.jumpToDef(cm as CodeMirror.Editor);
       },
-      rename: (cm) => {
-        ternServerRef.current?.rename(cm);
+      "Ctrl-Q": (cm: unknown) => {
+        ternServerRef.current?.rename(cm as CodeMirror.Editor);
       },
-      findPersistent: CodeMirror.commands.findPersistent,
-      replaceAll: CodeMirror.commands.replaceAll,
-      foldCode: (cm) => {
+      "Cmd-F": CodeMirror.commands.findPersistent,
+      "Ctrl-F": CodeMirror.commands.findPersistent,
+      "Ctrl-R": CodeMirror.commands.replaceAll,
+      "Ctrl-D": (cm: unknown) => {
         const cursor = (cm as CodeMirrorInstance).getCursor();
         (cm as CodeMirrorInstance).foldCode(cursor);
       },
-      openApiDocs: () => openUrl(API_DOCS_URL),
-      openPlugins: () => openUrl(PLUGINS_URL),
-    });
-    extraKeysRef.current = extraKeys as Record<string, (cm: unknown) => void>;
+      "Ctrl-O": () => openUrl(API_DOCS_URL),
+      "Ctrl-P": () => openUrl(PLUGINS_URL),
+    };
+    extraKeysRef.current = extraKeys;
 
     // 创建 CodeMirror 实例
     const codeEditor = CodeMirror.fromTextArea(textareaRef.current, {
       ...DEFAULT_CODEMIRROR_OPTIONS,
       extraKeys,
     });
-    codeEditorRef.current = codeEditor;
+    codeEditorRef.current = codeEditor as unknown as CodeMirrorInstance;
 
     // 应用保存的字体大小
     const wrapper = codeEditor.getWrapperElement();
@@ -239,36 +306,93 @@ export const CodeEditor: FC = () => {
       core,
       functions: functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a,
       dataComment: data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc,
-      CodeMirror: {
-        TernServer: CodeMirror.TernServer,
-        Doc: CodeMirror.Doc,
-      },
     });
     ternServerRef.current = ternServer;
 
     // 设置编辑器事件
     setupEditorEvents(codeEditor, ternServer, () => stateRef.current.lintAutocomplete);
 
-    // 创建 Legacy API
-    const legacyApi = createLegacyApi({
-      codeEditorRef,
-      ternServerRef,
-      stateRef,
-      extraKeysRef,
-      show,
+    // ========== 创建 Handler ==========
+
+    /**
+     * 打开编辑器并设置上下文
+     */
+    const open = (context: EditContext, config: EditorConfig) => {
+      // 设置上下文
+      contextRef.current = context;
+
+      // 设置状态
+      stateRef.current.isString = config.isString ?? false;
+      stateRef.current.lintAutocomplete = config.lint ?? false;
+      stateRef.current.preview = config.preview ?? null;
+
+      // 设置编辑器值
+      setValue(config.initialValue);
+
+      // 更新 UI 状态
+      updateShowPreview(!!config.preview);
+
+      // 检查是否为函数代码
+      if (config.initialValue.slice(0, 8) === "function") {
+        stateRef.current.lintAutocomplete = true;
+      }
+
+      // 应用 lint 设置
+      setLint();
+
+      // 显示编辑器
+      show();
+
+      // 恢复滚动位置
+      if (config.scrollTop) {
+        codeEditorRef.current?.scrollTo(0, config.scrollTop);
+      }
+    };
+
+    const handler = createHandler({
+      // CodeEditorAPI
+      getValue,
+      setValue,
+      format,
       hide,
-      updateShowPreview,
-      updateLintEnabled,
-      openUrl,
-      getIndent,
-      getEditorMode,
-      fs,
+      getScrollInfo: () => codeEditorRef.current?.getScrollInfo() || { top: 0 },
+      scrollTo: (x, y) => codeEditorRef.current?.scrollTo(x, y),
+      getIsString: () => stateRef.current.isString,
       printf,
       printe,
+      // HandlerDeps
+      open,
+      getIndent,
+      getEditorMode,
+      setLint,
     });
 
+    // 保存 handler 引用
+    handlerRef.current = handler;
+
+    // ========== 构建 Legacy API ==========
+    // 仅暴露实际被外部使用的 API
+    const legacyApi: EditorMultiApi = {
+      // 属性 (editor_ui.ts 检查状态)
+      get id() {
+        return contextRef.current?.id ?? "";
+      },
+
+      // Table handler (editor_table.ts)
+      import: handler.importFromTable,
+      confirm: (keep?: boolean) => {
+        handleConfirm(keep);
+      },
+
+      // Blockly handler (editor_blockly.ts)
+      multiLineEdit: handler.multiLineEdit,
+
+      // File handler (各面板组件)
+      editCommentJs: handler.editCommentJs,
+    };
+
     // 暴露到全局
-    (window as unknown as { editor_multi: typeof legacyApi }).editor_multi = legacyApi;
+    (window as unknown as { editor_multi: EditorMultiApi }).editor_multi = legacyApi;
   });
 
   return (

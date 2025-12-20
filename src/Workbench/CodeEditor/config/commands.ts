@@ -29,56 +29,6 @@ export function getShortcutKeys(): ShortcutKey[] {
 }
 
 /**
- * 生成命令下拉框的 HTML 选项
- * @returns HTML 字符串
- */
-export function generateCommandOptionsHtml(): string {
-  return (
-    "<option value='' selected>执行操作...</option>" +
-    Object.keys(commandsName)
-      .map((name) => {
-        return (
-          "<option value='" +
-          name +
-          "'>" +
-          commandsName[name as ShortcutKey] +
-          "</option>"
-        );
-      })
-      .join("")
-  );
-}
-
-/**
- * 创建 CodeMirror extraKeys 配置
- *
- * @param handlers - 各快捷键对应的处理函数
- * @returns extraKeys 配置对象
- */
-export function createExtraKeys(handlers: {
-  toggleComment: (cm: unknown) => void;
-  jumpToDef: (cm: unknown) => void;
-  rename: (cm: unknown) => void;
-  findPersistent: unknown;
-  replaceAll: unknown;
-  foldCode: (cm: unknown) => void;
-  openApiDocs: () => void;
-  openPlugins: () => void;
-}): Record<string, unknown> {
-  return {
-    "Ctrl-/": handlers.toggleComment,
-    "Ctrl-B": handlers.jumpToDef,
-    "Ctrl-Q": handlers.rename,
-    "Cmd-F": handlers.findPersistent,
-    "Ctrl-F": handlers.findPersistent,
-    "Ctrl-R": handlers.replaceAll,
-    "Ctrl-D": handlers.foldCode,
-    "Ctrl-O": handlers.openApiDocs,
-    "Ctrl-P": handlers.openPlugins,
-  };
-}
-
-/**
  * 注释文件路径映射
  * 编辑模式 -> 对应的注释文件路径
  */
@@ -91,15 +41,6 @@ export const COMMENT_FILE_PATHS: CommentFilePathMap = {
   commonevent: "_server/table/events.comment.js",
   plugins: "_server/table/plugins.comment.js",
 };
-
-/**
- * 获取指定模式的注释文件路径
- * @param mode - 编辑模式
- * @returns 文件路径，如果模式不存在则返回 undefined
- */
-export function getCommentFilePath(mode: string): string | undefined {
-  return COMMENT_FILE_PATHS[mode];
-}
 
 /**
  * CodeMirror 默认配置
@@ -135,15 +76,6 @@ export const JSHINT_OPTIONS = {
   options: {
     esversion: 2021,
   },
-};
-
-/**
- * Beautifier 格式化配置
- */
-export const BEAUTIFIER_OPTIONS = {
-  brace_style: "collapse-preserve-inline",
-  indent_with_tabs: true,
-  jslint_happy: true,
 };
 
 /**

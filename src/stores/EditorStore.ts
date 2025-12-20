@@ -1,7 +1,7 @@
 import { createStore } from "@/utils/store/store";
 import { useEffect, useState } from "react";
 
-export const EditorStore = createStore(() => {
+const useEditorStore = () => {
   const [editorInitialized, setEditorInitialized] = useState(false);
 
   const [uiRatio, setUIRatio] = useState(1);
@@ -12,7 +12,9 @@ export const EditorStore = createStore(() => {
     uiRatio,
     setUIRatio,
   }
-});
+};
+
+export const EditorStore = createStore(useEditorStore);
 
 export const useEditor = (accessor: (editor: any) => void) => {
   const { editorInitialized: editorInitialized } = EditorStore.useStore();

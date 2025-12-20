@@ -2,6 +2,15 @@
  * editor_multi 模块类型定义
  */
 
+// ============== 重新导出游戏数据类型（保持向后兼容） ==============
+export type {
+  CoreMaterial,
+  CoreStatus,
+  CoreType,
+  FunctionsType,
+  DataCommentType,
+} from "@/types/game";
+
 // ============== Tern 相关类型 ==============
 
 /** Tern 定义中的单个条目 */
@@ -44,9 +53,6 @@ export interface TernCoreDef {
 }
 
 // ============== 编辑器状态类型 ==============
-
-/** 编辑上下文类型 */
-export type EditContextType = "table" | "blockly" | "file";
 
 /** 编辑上下文 */
 export interface EditContext {
@@ -114,54 +120,3 @@ export type MultiLineArgs = [
   field: unknown | null,
   callback: MultiLineCallback | null,
 ];
-
-// ============== 游戏数据类型（简化版，用于类型推断） ==============
-
-/** 简化的 core.material 类型 */
-export interface CoreMaterial {
-  enemys: Record<string, { name?: string }>;
-  bgms: Record<string, unknown>;
-  sounds: Record<string, unknown>;
-  animates: Record<string, unknown>;
-  images: Record<string, unknown>;
-  items: Record<string, { name?: string }>;
-}
-
-/** 简化的 core.status 类型 */
-export interface CoreStatus {
-  maps: Record<string, { title?: string }>;
-  shops: Record<string, { textInList?: string }>;
-  textAttribute: Record<string, unknown>;
-  bgmaps: Record<string, unknown>;
-  fgmaps: Record<string, unknown>;
-}
-
-/** 简化的 core 类型 */
-export interface CoreType {
-  material: CoreMaterial;
-  status: CoreStatus;
-  canvas: Record<string, CanvasRenderingContext2D>;
-  values: Record<string, unknown>;
-  flags: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-/** 简化的 functions 类型 */
-export interface FunctionsType {
-  enemys: {
-    getSpecials: () => Array<[number, string | ((arg: unknown) => string)]>;
-  };
-  [key: string]: unknown;
-}
-
-/** 简化的 data_comment 类型 */
-export interface DataCommentType {
-  _data: {
-    values: {
-      _data: Record<string, { _data: string } | undefined>;
-    };
-    flags: {
-      _data: Record<string, { _data: string } | undefined>;
-    };
-  };
-}

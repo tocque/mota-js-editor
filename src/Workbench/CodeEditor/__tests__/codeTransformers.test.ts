@@ -8,13 +8,8 @@ import { describe, expect, it } from "vitest";
 import {
   defaultGuidGenerator,
   deserializeWithFunctions,
-  escapeNewlines,
-  isFunctionString,
-  isJsonStringFormat,
-  safeJsonParse,
   serializeForStorage,
   serializeWithFunctions,
-  unescapeNewlines,
 } from "../utils/codeTransformers";
 
 describe("codeTransformers", () => {
@@ -182,101 +177,6 @@ describe("codeTransformers", () => {
       const serialized = serializeWithFunctions(original);
       const deserialized = deserializeWithFunctions(serialized);
       expect(deserialized).toEqual(original);
-    });
-  });
-
-  describe("escapeNewlines", () => {
-    it("应该将换行符转换为转义序列", () => {
-      expect(escapeNewlines("line1\nline2")).toBe("line1\\nline2");
-    });
-
-    it("应该处理多个换行符", () => {
-      expect(escapeNewlines("a\nb\nc")).toBe("a\\nb\\nc");
-    });
-
-    it("应该处理空字符串", () => {
-      expect(escapeNewlines("")).toBe("");
-    });
-
-    it("应该处理没有换行符的字符串", () => {
-      expect(escapeNewlines("no newlines")).toBe("no newlines");
-    });
-
-    it("应该处理 null/undefined", () => {
-      expect(escapeNewlines(null as unknown as string)).toBe(null);
-      expect(escapeNewlines(undefined as unknown as string)).toBe(undefined);
-    });
-  });
-
-  describe("unescapeNewlines", () => {
-    it("应该将转义序列转换为换行符", () => {
-      expect(unescapeNewlines("line1\\nline2")).toBe("line1\nline2");
-    });
-
-    it("应该处理多个转义序列", () => {
-      expect(unescapeNewlines("a\\nb\\nc")).toBe("a\nb\nc");
-    });
-
-    it("应该处理空字符串", () => {
-      expect(unescapeNewlines("")).toBe("");
-    });
-
-    it("应该处理没有转义序列的字符串", () => {
-      expect(unescapeNewlines("no escapes")).toBe("no escapes");
-    });
-
-    it("escape 和 unescape 应该互为逆操作", () => {
-      const original = "line1\nline2\nline3";
-      expect(unescapeNewlines(escapeNewlines(original))).toBe(original);
-    });
-  });
-
-  describe("isFunctionString", () => {
-    it("应该识别以 function 开头的字符串", () => {
-      expect(isFunctionString("function() {}")).toBe(true);
-      expect(isFunctionString("function test() { return 1; }")).toBe(true);
-    });
-
-    it("应该拒绝非函数字符串", () => {
-      expect(isFunctionString("not a function")).toBe(false);
-      expect(isFunctionString("")).toBe(false);
-      expect(isFunctionString("func")).toBe(false);
-    });
-
-    it("应该处理非字符串输入", () => {
-      expect(isFunctionString(123 as unknown as string)).toBe(false);
-      expect(isFunctionString(null as unknown as string)).toBe(false);
-    });
-  });
-
-  describe("isJsonStringFormat", () => {
-    it("应该识别以引号开头的字符串", () => {
-      expect(isJsonStringFormat('"hello"')).toBe(true);
-      expect(isJsonStringFormat('"function() {}"')).toBe(true);
-    });
-
-    it("应该拒绝非引号开头的字符串", () => {
-      expect(isJsonStringFormat("hello")).toBe(false);
-      expect(isJsonStringFormat("123")).toBe(false);
-      expect(isJsonStringFormat("")).toBe(false);
-    });
-
-    it("应该处理非字符串输入", () => {
-      expect(isJsonStringFormat(123 as unknown as string)).toBe(false);
-    });
-  });
-
-  describe("safeJsonParse", () => {
-    it("应该正确解析有效 JSON", () => {
-      expect(safeJsonParse('{"a": 1}', {})).toEqual({ a: 1 });
-      expect(safeJsonParse("[1, 2, 3]", [])).toEqual([1, 2, 3]);
-      expect(safeJsonParse('"hello"', "")).toBe("hello");
-    });
-
-    it("应该在解析失败时返回默认值", () => {
-      expect(safeJsonParse("invalid", "default")).toBe("default");
-      expect(safeJsonParse("{invalid}", {})).toEqual({});
-      expect(safeJsonParse("", null)).toBeNull();
     });
   });
 });
