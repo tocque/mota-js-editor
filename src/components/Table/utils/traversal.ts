@@ -1,11 +1,11 @@
 /**
  * Traversal Utilities
- * 
+ *
  * Functions for traversing data and comment objects to build the table tree.
  */
 
 import type { CommentObject, FieldArgs, FieldConfig, TableNode } from '../types';
-import { getShortField } from './fieldPath';
+import { getShortField } from '@/utils/fieldPath';
 
 let nodeIdCounter = 0;
 

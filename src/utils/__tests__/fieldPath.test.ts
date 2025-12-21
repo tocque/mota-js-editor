@@ -11,7 +11,7 @@ import {
   buildFieldPath,
   getParentField,
   fieldToDataAttr,
-} from '../fieldPath';
+} from '@/utils/fieldPath';
 
 describe('fieldPath', () => {
   describe('parseFieldPath', () => {

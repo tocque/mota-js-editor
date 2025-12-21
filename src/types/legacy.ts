@@ -63,6 +63,8 @@ export interface Editor {
     decode64?: (str: string) => string;
   };
   currentFloorId: string;
+  /** 是否使用压缩文件，true 表示使用，'alerted' 表示已提醒 */
+  useCompress?: boolean | 'alerted';
 }
 
 // ============== Editor Mode ==============

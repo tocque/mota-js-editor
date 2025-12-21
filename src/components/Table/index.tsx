@@ -40,10 +40,5 @@ export type {
   TableContextValue,
 } from './types';
 
-// Legacy 集成辅助函数导出（用于特殊场景）
-export {
-  createValueChangeHandler,
-  createAddItemHandler,
-  createDeleteItemHandler,
-  type ValueChangeHandlerOptions,
-} from './legacy';
+// Legacy 集成辅助函数导出
+export { openExternalEditor } from './legacy';
