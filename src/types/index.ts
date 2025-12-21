@@ -10,3 +10,16 @@ export type {
   FunctionsType,
   DataCommentType,
 } from "./game";
+
+// Legacy 编辑器类型
+export type {
+  EditorBlockly,
+  EditorMulti,
+  EditorUiEvent,
+  Editor,
+  EditorMode,
+  OpenColorPickerFunc,
+  PrinteFunc,
+  PrintfFunc,
+  PrintiFunc,
+} from "./legacy";
