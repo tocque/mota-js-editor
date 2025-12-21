@@ -117,8 +117,14 @@ export interface TableNode {
   children?: TableNode[];
 }
 
-/** 双击模式类型 */
-export type DoubleClickMode = 'change' | 'add' | 'delete';
+/** 编辑模式类型 */
+export type EditMode = 'change' | 'add' | 'delete';
+
+/** @deprecated 使用 EditMode 代替 */
+export type DoubleClickMode = EditMode;
+
+/** Table Action 类型：[操作类型, 字段路径, 值] */
+export type TableAction = ['change' | 'add' | 'delete', string, unknown];
 
 /** Props for the main Table component */
 export interface TableProps {
@@ -126,21 +132,19 @@ export interface TableProps {
   data: Record<string, unknown>;
   /** Comment configuration object */
   commentObj: CommentObject;
-  /** Callback when a value changes */
-  onValueChange?: (field: string, value: unknown) => void;
-  /** Callback when adding a new item */
-  onAddItem?: (field: string, id: string) => void;
-  /** Callback when deleting an item */
-  onDeleteItem?: (field: string) => void;
-  /** Callback when edit button is clicked - for external editor integration, guid 用于外部编辑器定位 DOM 元素 */
-  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
-  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除，受控属性 */
-  doubleClickMode?: DoubleClickMode;
-  /**
-   * @deprecated 使用 doubleClickMode 代替。双击处理已内部化到 Table 组件。
-   * 此属性将在后续版本中移除。
+  /** 
+   * 统一的变更回调，接收 Action 元组
+   * Action 格式: ['change' | 'add' | 'delete', field, value]
    */
-  onDoubleClick?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
+  onChange?: (action: TableAction) => void;
+  /** 
+   * 打开外部编辑器的回调
+   * 当字段类型需要外部编辑器（如 event、textarea、material 等）时调用
+   * 如果未提供，Table 会使用内置的外部编辑器集成
+   */
+  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除，受控属性 */
+  editMode?: EditMode;
 }
 
 /** Props for TableRow component */
@@ -159,8 +163,8 @@ export interface TableRowProps {
   shortComment?: string;
   /** Value change callback */
   onChange: (value: unknown) => void;
-  /** Edit button click callback，传递 guid 用于外部编辑器 */
-  onEditClick?: (guid: string) => void;
+  /** 打开外部编辑器回调，传递 guid 用于外部编辑器 */
+  onOpenExternalEditor?: (guid: string) => void;
   /** Double click callback，传递 guid 用于外部编辑器 */
   onDoubleClick?: (guid: string) => void;
 }
@@ -213,8 +217,8 @@ export interface ActionButtonsProps {
   type?: FieldType;
   /** Comment button click callback */
   onCommentClick?: () => void;
-  /** Edit button click callback */
-  onEditClick?: () => void;
+  /** 打开外部编辑器按钮点击回调 */
+  onOpenExternalEditor?: () => void;
   /** Copy button click callback */
   onCopyClick?: () => void;
 }

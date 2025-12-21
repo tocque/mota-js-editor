@@ -8,6 +8,10 @@
 // 主组件
 export { Table } from './components/Table';
 
+// 附属组件
+export { EditModeSegmented } from './components/EditModeSegmented';
+export type { EditModeSegmentedProps } from './components/EditModeSegmented';
+
 // 类型导出
 export type {
   // 核心类型
@@ -17,6 +21,8 @@ export type {
   FieldConfig,
   FieldType,
   FieldArgs,
+  TableAction,
+  EditMode,
   // 输入组件类型
   BaseInputProps,
   TextareaInputProps,
@@ -34,12 +40,10 @@ export type {
   TableContextValue,
 } from './types';
 
-// Legacy 集成辅助函数导出
+// Legacy 集成辅助函数导出（用于特殊场景）
 export {
   createValueChangeHandler,
   createAddItemHandler,
   createDeleteItemHandler,
-  createEditClickHandler,
   type ValueChangeHandlerOptions,
-  type EditClickHandlerOptions,
 } from './legacy';

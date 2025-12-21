@@ -120,7 +120,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
     comment,
     shortComment,
     onChange,
-    onEditClick,
+    onOpenExternalEditor,
     onDoubleClick,
   } = props;
 
@@ -154,10 +154,10 @@ export const TableRow: FC<TableRowProps> = (props) => {
     }
   }, [comment]);
 
-  // 处理编辑按钮点击 - 调用外部传入的回调，传递 guid
-  const handleEditClick = useCallback(() => {
-    onEditClick?.(guid);
-  }, [onEditClick, guid]);
+  // 处理打开外部编辑器按钮点击 - 调用外部传入的回调，传递 guid
+  const handleOpenExternalEditor = useCallback(() => {
+    onOpenExternalEditor?.(guid);
+  }, [onOpenExternalEditor, guid]);
 
   // 处理复制按钮点击
   const handleCopyClick = useCallback(() => {
@@ -232,7 +232,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
           showComment={!!shortComment}
           type={type}
           onCommentClick={handleCommentClick}
-          onEditClick={handleEditClick}
+          onOpenExternalEditor={handleOpenExternalEditor}
           onCopyClick={handleCopyClick}
         />
       </td>

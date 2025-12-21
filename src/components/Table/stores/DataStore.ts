@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { createStore } from '@/utils/store/store';
 import { noop } from '@/utils/empty';
-import type { CommentObject, DoubleClickMode, FieldConfig, FieldType, TableNode } from '../types';
+import type { CommentObject, EditMode, FieldConfig, FieldType, TableNode, TableAction } from '../types';
 import { buildTableTree } from '../utils/traversal';
+import { getByFieldPath, validateId } from '../utils';
 
 /**
  * DataStore - 管理表格数据状态和回调
@@ -17,16 +18,12 @@ export interface DataStoreArgument {
   data: Record<string, unknown>;
   /** 注释配置对象 */
   commentObj: CommentObject;
-  /** 值变更回调 */
-  onValueChange?: (field: string, value: unknown) => void;
-  /** 添加项回调 */
-  onAddItem?: (field: string, id: string) => void;
-  /** 删除项回调 */
-  onDeleteItem?: (field: string) => void;
-  /** 编辑按钮点击回调 - 用于外部编辑器集成，guid 用于外部编辑器定位 DOM 元素 */
-  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
-  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
-  doubleClickMode?: DoubleClickMode;
+  /** 统一的变更回调 */
+  onChange?: (action: TableAction) => void;
+  /** 打开外部编辑器回调 - 用于外部编辑器集成，guid 用于外部编辑器定位 DOM 元素 */
+  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
+  editMode?: EditMode;
 }
 
 export interface DataStoreValue {
@@ -34,20 +31,42 @@ export interface DataStoreValue {
   rootNodes: TableNode[];
   /** 所有可折叠的字段路径（gap 行） */
   gapFields: string[];
+  /** 数据对象引用，用于内部获取值 */
+  data: Record<string, unknown>;
   /** 值变更回调，供子组件使用 */
   onValueChange: (field: string, value: unknown) => void;
   /** 添加项回调，供子组件使用 */
   onAddItem: (field: string, id: string) => void;
   /** 删除项回调，供子组件使用 */
   onDeleteItem: (field: string) => void;
-  /** 编辑按钮点击回调，供子组件使用，guid 用于外部编辑器定位 DOM 元素 */
-  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
-  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
-  doubleClickMode: DoubleClickMode;
+  /** 打开外部编辑器回调，供子组件使用，guid 用于外部编辑器定位 DOM 元素 */
+  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
+  editMode: EditMode;
 }
 
+/**
+ * 获取全局 printe 函数
+ */
+const getPrinte = (): ((msg: string) => void) | undefined => {
+  if (typeof window !== 'undefined' && 'printe' in window) {
+    return (window as unknown as { printe: (msg: string) => void }).printe;
+  }
+  return undefined;
+};
+
+/**
+ * 获取全局 printf 函数
+ */
+const getPrintf = (): ((msg: string) => void) | undefined => {
+  if (typeof window !== 'undefined' && 'printf' in window) {
+    return (window as unknown as { printf: (msg: string) => void }).printf;
+  }
+  return undefined;
+};
+
 function useDataStore(argument: DataStoreArgument): DataStoreValue {
-  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = argument;
+  const { data, commentObj, onChange, onOpenExternalEditor, editMode } = argument;
 
   // 从 data 和 commentObj 构建表格树，使用 useMemo 避免重复构建
   const { rootNodes, gapFields } = useMemo(
@@ -55,26 +74,54 @@ function useDataStore(argument: DataStoreArgument): DataStoreValue {
     [data, commentObj],
   );
 
-  // 提供稳定的回调引用，未提供时使用 noop
-  const handleValueChange = useMemo(() => onValueChange ?? noop, [onValueChange]);
+  // 值变更回调 - 转换为 Action 格式
+  const handleValueChange = useCallback((field: string, value: unknown) => {
+    onChange?.(['change', field, value]);
+  }, [onChange]);
 
-  const handleAddItem = useMemo(() => onAddItem ?? noop, [onAddItem]);
+  // 添加项回调 - 内部处理验证逻辑
+  const handleAddItem = useCallback((parentField: string, id: string) => {
+    // 验证 ID
+    let existingKeys: string[] = [];
+    const parentObj = getByFieldPath(data, parentField);
+    if (parentObj && typeof parentObj === 'object') {
+      existingKeys = Object.keys(parentObj as Record<string, unknown>);
+    }
+    const validation = validateId(id, existingKeys, false);
+    if (!validation.valid) {
+      const printe = getPrinte();
+      printe?.(validation.error || 'ID 无效');
+      return;
+    }
 
-  const handleDeleteItem = useMemo(() => onDeleteItem ?? noop, [onDeleteItem]);
+    const newField = parentField + "['" + id + "']";
+    onChange?.(['add', newField, null]);
+    const printf = getPrintf();
+    printf?.('添加成功，刷新后生效。');
+  }, [data, onChange]);
 
-  const handleEditClick = useMemo(() => onEditClick ?? noop, [onEditClick]);
+  // 删除项回调
+  const handleDeleteItem = useCallback((field: string) => {
+    onChange?.(['delete', field, undefined]);
+    const printf = getPrintf();
+    printf?.('删除成功，刷新后生效。');
+  }, [onChange]);
 
-  // 双击模式默认为 'change'
-  const mode: DoubleClickMode = doubleClickMode ?? 'change';
+  // 打开外部编辑器回调
+  const handleOpenExternalEditor = useMemo(() => onOpenExternalEditor ?? noop, [onOpenExternalEditor]);
+
+  // 编辑模式默认为 'change'
+  const mode: EditMode = editMode ?? 'change';
 
   return {
     rootNodes,
     gapFields,
+    data,
     onValueChange: handleValueChange,
     onAddItem: handleAddItem,
     onDeleteItem: handleDeleteItem,
-    onEditClick: handleEditClick,
-    doubleClickMode: mode,
+    onOpenExternalEditor: handleOpenExternalEditor,
+    editMode: mode,
   };
 }
 

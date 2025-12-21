@@ -15,14 +15,13 @@ import { TableBody } from './TableBody';
  * <Table
  *   data={gameData}
  *   commentObj={commentConfig}
- *   onValueChange={(field, value) => console.log(field, value)}
- *   onEditClick={(field, type, config, guid) => openEditor(field, type, config, guid)}
- *   doubleClickMode="change"
+ *   onChange={(action) => save([action])}
+ *   editMode="change"
  * />
  * ```
  */
 export const Table: FC<TableProps> = (props) => {
-  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = props;
+  const { data, commentObj, onChange, onOpenExternalEditor, editMode } = props;
 
   return (
     <div className="etable">
@@ -31,11 +30,9 @@ export const Table: FC<TableProps> = (props) => {
           argument={{
             data,
             commentObj,
-            onValueChange,
-            onAddItem,
-            onDeleteItem,
-            onEditClick,
-            doubleClickMode,
+            onChange,
+            onOpenExternalEditor,
+            editMode,
           }}
         >
           <table>

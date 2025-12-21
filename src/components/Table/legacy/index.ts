@@ -12,7 +12,5 @@ export {
   type ValueChangeHandlerOptions,
 } from './valueChangeHandler';
 
-export {
-  createEditClickHandler,
-  type EditClickHandlerOptions,
-} from './editClickHandler';
+// 内部使用的外部编辑器集成
+export { openExternalEditor } from './externalEditor';

@@ -3,7 +3,8 @@ import type { FieldConfig, FieldType, TableNode } from '../types';
 import { TableRow } from './TableRow';
 import { GapRow } from './GapRow';
 import { DataStore } from '../stores';
-import { getParentFieldPath, checkRange } from '../utils';
+import { getParentFieldPath, checkRange, getByFieldPath } from '../utils';
+import { openExternalEditor } from '../legacy/externalEditor';
 
 /**
  * 获取全局 printe 函数
@@ -17,11 +18,12 @@ const getPrinte = (): ((msg: string) => void) | undefined => {
 
 /** 渲染节点所需的回调函数 */
 interface RenderCallbacks {
+  data: Record<string, unknown>;
   onValueChange: (field: string, value: unknown) => void;
   onAddItem: (field: string, id: string) => void;
   onDeleteItem: (field: string) => void;
-  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
-  doubleClickMode: 'change' | 'add' | 'delete';
+  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  editMode: 'change' | 'add' | 'delete';
 }
 
 /**
@@ -39,14 +41,15 @@ interface RenderCallbacks {
  * ```
  */
 export const TableBody: FC = () => {
-  const { rootNodes, onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = DataStore.useStore();
+  const { rootNodes, data, onValueChange, onAddItem, onDeleteItem, onOpenExternalEditor, editMode } = DataStore.useStore();
 
   const callbacks: RenderCallbacks = {
+    data,
     onValueChange,
     onAddItem,
     onDeleteItem,
-    onEditClick,
-    doubleClickMode,
+    onOpenExternalEditor,
+    editMode,
   };
 
   return <>{renderNodes(rootNodes, callbacks)}</>;
@@ -100,7 +103,7 @@ interface TableRowWrapperProps {
 }
 
 const TableRowWrapper: FC<TableRowWrapperProps> = ({ node, callbacks }) => {
-  const { onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = callbacks;
+  const { data, onValueChange, onAddItem, onDeleteItem, onOpenExternalEditor, editMode } = callbacks;
 
   const handleChange = useCallback(
     (value: unknown) => {
@@ -109,18 +112,26 @@ const TableRowWrapper: FC<TableRowWrapperProps> = ({ node, callbacks }) => {
     [node.field, onValueChange],
   );
 
-  // 编辑按钮点击处理 - 传递 guid 给外部
-  const handleEditClick = useCallback((guid: string) => {
-    onEditClick(node.field, node.config._type, node.config, guid);
-  }, [node.field, node.config, onEditClick]);
+  // 打开外部编辑器 - 如果外部提供了回调则使用，否则使用内置实现
+  const handleOpenExternalEditor = useCallback((guid: string) => {
+    // 检查是否有外部提供的回调（非 noop）
+    if (onOpenExternalEditor !== undefined && onOpenExternalEditor.length > 0) {
+      onOpenExternalEditor(node.field, node.config._type, node.config, guid);
+    } else {
+      // 使用内置的外部编辑器集成
+      const getValue = (field: string) => getByFieldPath(data, field);
+      const setValue = (field: string, value: unknown) => onValueChange(field, value);
+      openExternalEditor(node.field, node.config._type, node.config, guid, getValue, setValue);
+    }
+  }, [node.field, node.config, data, onValueChange, onOpenExternalEditor]);
 
-  // 双击处理 - 根据 doubleClickMode 调用不同的回调
+  // 双击处理 - 根据 editMode 调用不同的回调
   const handleDoubleClick = useCallback((guid: string) => {
-    const mode = doubleClickMode;
+    const mode = editMode;
     
     if (mode === 'change') {
-      // 正常编辑模式：调用编辑处理函数
-      onEditClick(node.field, node.config._type, node.config, guid);
+      // 正常编辑模式：打开外部编辑器
+      handleOpenExternalEditor(guid);
     } else if (mode === 'add') {
       // 添加模式：获取父路径，提示输入新 ID
       const parentPath = getParentFieldPath(node.field);
@@ -139,7 +150,7 @@ const TableRowWrapper: FC<TableRowWrapperProps> = ({ node, callbacks }) => {
         onDeleteItem(node.field);
       }
     }
-  }, [node.field, node.config, doubleClickMode, onEditClick, onAddItem, onDeleteItem]);
+  }, [node.field, node.config, editMode, handleOpenExternalEditor, onAddItem, onDeleteItem]);
 
   return (
     <TableRow
@@ -150,7 +161,7 @@ const TableRowWrapper: FC<TableRowWrapperProps> = ({ node, callbacks }) => {
       comment={node.comment}
       shortComment={node.shortComment}
       onChange={handleChange}
-      onEditClick={handleEditClick}
+      onOpenExternalEditor={handleOpenExternalEditor}
       onDoubleClick={handleDoubleClick}
     />
   );

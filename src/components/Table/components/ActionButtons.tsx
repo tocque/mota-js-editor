@@ -30,7 +30,7 @@ const getEditButtonText = (type?: FieldType): string => {
  * - 复制按钮：当字段类型为 disable 时显示
  */
 export const ActionButtons: FC<ActionButtonsProps> = (props) => {
-  const { showComment, type, onCommentClick, onEditClick, onCopyClick } = props;
+  const { showComment, type, onCommentClick, onOpenExternalEditor, onCopyClick } = props;
 
   return (
     <>
@@ -42,7 +42,7 @@ export const ActionButtons: FC<ActionButtonsProps> = (props) => {
       {/* 编辑按钮 - 根据类型决定是否显示 */}
       {shouldShowEditButton(type) && (
         <button 
-          onClick={onEditClick} 
+          onClick={onOpenExternalEditor} 
           className="editorTableEditBtn"
         >
           {getEditButtonText(type)}
