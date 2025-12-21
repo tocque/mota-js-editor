@@ -5,7 +5,6 @@
  * 提供 Promise 风格的 API。
  */
 
-import type { CommentObject } from '@/components/Table';
 import { applyActions, type Action } from '@/utils/action';
 import { encode64 } from '@/utils/encoding';
 import { serializeToJsFile, alertWhenCompress } from '@/utils/serialize';
@@ -13,14 +12,6 @@ import { createWriteExecutor } from '@/utils/writeExecutor';
 import { fs } from '@/services/fs';
 
 export type { Action };
-
-/** 全塔属性数据结构 */
-export interface TowerData {
-  /** 数据对象 */
-  data: Record<string, unknown>;
-  /** 注释配置对象 */
-  commentObj: CommentObject;
-}
 
 /** 数据变量名 */
 const DATA_VAR_NAME = 'data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d';
@@ -38,63 +29,6 @@ const writeExecutor = createWriteExecutor();
 function getDataObject(): Record<string, unknown> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (window as any)[DATA_VAR_NAME] as Record<string, unknown>;
-}
-
-/**
- * 获取注释配置对象
- *
- * @returns 注释配置对象
- * @throws 当 editor.file.dataComment 不可用时抛出错误
- */
-export function getCommentObject(): CommentObject {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dataComment = (editor as any)?.file?.dataComment;
-  if (!dataComment) {
-    throw new Error('editor.file.dataComment 不可用');
-  }
-  return dataComment as CommentObject;
-}
-
-/**
- * 读取全塔属性数据
- *
- * 从 data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d 读取数据，
- * 合并 main 字段，缺失字段设为 null。
- *
- * @returns 包含数据对象和注释配置
- */
-export function readTowerData(): TowerData {
-  const dataObj = getDataObject();
-  const commentObj = getCommentObject();
-
-  // 复制数据对象，并初始化 main 字段
-  const data: Record<string, unknown> = { ...dataObj, main: {} };
-
-  // 获取 main 字段的注释配置
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mainCommentData = (commentObj as any)?._data?.main?._data;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorMain = (editor as any)?.main as Record<string, unknown> | undefined;
-  const dataMain = dataObj.main as Record<string, unknown> | undefined;
-
-  if (mainCommentData && typeof mainCommentData === 'object') {
-    const mainData: Record<string, unknown> = {};
-
-    // 遍历注释配置中定义的所有 main 字段
-    for (const key of Object.keys(mainCommentData)) {
-      if (editorMain && key in editorMain) {
-        // 如果 editor.main 中存在该字段，使用 data 对象中的值
-        mainData[key] = dataMain?.[key];
-      } else {
-        // 如果 editor.main 中不存在该字段，设为 null
-        mainData[key] = null;
-      }
-    }
-
-    data.main = mainData;
-  }
-
-  return { data, commentObj };
 }
 
 /**
@@ -140,12 +74,12 @@ export async function writeTowerData(actions: Action[]): Promise<void> {
 }
 
 /**
- * 获取全塔属性数据（兼容旧 API）
+ * 获取全塔属性数据
  *
- * @returns Promise<TowerData>
+ * @returns Promise<Record<string, unknown>>
  */
-export function fetchTowerData(): Promise<TowerData> {
-  return Promise.resolve(readTowerData());
+export function fetchTowerData(): Promise<Record<string, unknown>> {
+  return Promise.resolve(getDataObject());
 }
 
 /**

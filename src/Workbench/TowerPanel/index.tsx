@@ -8,12 +8,16 @@
 import { useCallback, useState, type FC } from 'react';
 import { LeftTab } from '../components/LeftTab';
 import { Table, EditModeSegmented } from '@/components/Table';
+import { useTableMetaEditor } from '@/components/Table/hooks';
 import { TowerDataStore } from '@/stores/TowerDataStore';
 import type { EditMode, TableAction } from '@/components/Table/types';
 
 export const TowerPanel: FC = () => {
   // 从 Store 获取数据和保存方法
-  const { towerData, isLoading, error, save } = TowerDataStore.useStore();
+  const { data, commentObj, isLoading, error, save } = TowerDataStore.useStore();
+
+  // 使用 useTableMetaEditor 获取编辑器打开函数
+  const { openEditor } = useTableMetaEditor('dataComment');
 
   // 在 Panel 层维护 editMode
   const [editMode, setEditMode] = useState<EditMode>('change');
@@ -26,10 +30,10 @@ export const TowerPanel: FC = () => {
     [save],
   );
 
-  // 配置表格按钮点击处理
-  const handleConfigure = () => {
-    editor_multi?.editCommentJs?.('tower');
-  };
+  // 配置表格按钮点击处理 - 使用 useTableMetaEditor 打开编辑器
+  const handleConfigure = useCallback(() => {
+    openEditor();
+  }, [openEditor]);
 
   // 操作按钮区域
   const actions = (
@@ -45,13 +49,13 @@ export const TowerPanel: FC = () => {
       id="left5"
       title="全塔属性"
       actions={actions}
-      loading={isLoading && !towerData}
+      loading={isLoading && !data}
       error={error ? String(error) : null}
     >
-      {towerData && (
+      {data && commentObj && (
         <Table
-          data={towerData.data}
-          commentObj={towerData.commentObj}
+          data={data}
+          commentObj={commentObj}
           onChange={handleChange}
           editMode={editMode}
         />

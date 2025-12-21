@@ -4,9 +4,6 @@
 export {
   fetchTowerData,
   saveActions,
-  readTowerData,
   writeTowerData,
-  getCommentObject,
-  type TowerData,
   type Action,
 } from './towerDataService';

@@ -11,6 +11,7 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       // 数据不会自动过期
       staleTime: Infinity,
+      experimental_prefetchInRender: true,
     },
   },
 });

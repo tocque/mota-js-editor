@@ -7,3 +7,5 @@
 export { useFold } from './useFold';
 export { useTableCallbacks } from './useTableCallbacks';
 export type { UseTableCallbacksReturn } from './useTableCallbacks';
+export { useTableMetaEditor } from './useTableMetaEditor';
+export type { UseTableMetaEditorResult } from './useTableMetaEditor';
