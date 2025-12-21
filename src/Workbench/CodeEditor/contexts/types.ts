@@ -94,3 +94,31 @@ export interface MultiLineArgs {
  * 多行编辑回调
  */
 export type MultiLineCallback = (newValue: string, b: unknown, f: unknown) => void;
+
+/**
+ * open 函数配置选项
+ * 用于 editor_multi.open 的配置参数
+ */
+export interface OpenConfig {
+  /** 是否启用语法检查 */
+  lint?: boolean;
+  /** 是否为字符串编辑模式 */
+  isString?: boolean;
+  /** 预览数据 */
+  preview?: unknown;
+  /** 滚动位置（用于恢复） */
+  scrollTop?: number;
+  /** 上下文标识（用于 legacy API 兼容） */
+  contextId?: string;
+}
+
+/**
+ * open 函数回调
+ * 用于 editor_multi.open 的回调参数
+ */
+export interface OpenCallbacks {
+  /** 确认编辑时调用，传入编辑后的值 */
+  onConfirm: (value: string) => void;
+  /** 取消编辑时调用（可选） */
+  onCancel?: () => void;
+}

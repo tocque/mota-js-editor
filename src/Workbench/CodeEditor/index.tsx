@@ -18,6 +18,7 @@ import { createTernServer, type TernServerInstance } from "./utils/createTernSer
 import { setupEditorEvents } from "./handlers/editorEvents";
 import { createHandler, type EditContext, type EditorConfig, type Handler } from "./contexts";
 import type { CodeMirrorInstance, EditorMultiApi } from "./types";
+import type { OpenConfig, OpenCallbacks } from "./contexts";
 import { isString } from "es-toolkit";
 
 export const CodeEditor: FC = () => {
@@ -315,9 +316,9 @@ export const CodeEditor: FC = () => {
     // ========== 创建 Handler ==========
 
     /**
-     * 打开编辑器并设置上下文
+     * 打开编辑器并设置上下文（内部接口，接收 EditContext）
      */
-    const open = (context: EditContext, config: EditorConfig) => {
+    const openWithContext = (context: EditContext, config: EditorConfig) => {
       // 设置上下文
       contextRef.current = context;
 
@@ -349,6 +350,40 @@ export const CodeEditor: FC = () => {
       }
     };
 
+    /**
+     * 新的简洁 open 接口
+     * 调用方负责准备初始值和处理回调
+     */
+    const open = (initialValue: string, config: OpenConfig, callbacks: OpenCallbacks) => {
+      // 创建通用的 EditContext（内联对象，存储 callbacks）
+      const context: EditContext = {
+        id: config.contextId ?? "open",
+        confirm(keep?: boolean) {
+          format();
+          const value = getValue() || "";
+          callbacks.onConfirm(value);
+          if (!keep) {
+            hide();
+          } else {
+            alert("写入成功！");
+          }
+        },
+        cancel() {
+          callbacks.onCancel?.();
+          hide();
+        },
+      };
+
+      // 调用内部 open 函数
+      openWithContext(context, {
+        initialValue,
+        lint: config.lint,
+        isString: config.isString,
+        preview: config.preview,
+        scrollTop: config.scrollTop,
+      });
+    };
+
     const handler = createHandler({
       // CodeEditorAPI
       getValue,
@@ -377,6 +412,9 @@ export const CodeEditor: FC = () => {
       get id() {
         return contextRef.current?.id ?? "";
       },
+
+      // 新的简洁接口
+      open,
 
       // Table handler (editor_table.ts)
       import: handler.importFromTable,

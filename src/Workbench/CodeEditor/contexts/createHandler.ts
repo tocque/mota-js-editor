@@ -1,7 +1,7 @@
 /**
  * Handler 工厂
  *
- * 创建代码编辑器的入口函数，每个入口函数会创建对应的 EditContext 并打开编辑器。
+ * 创建代码编辑器的入口函数，每个入口函数通过调用 open 接口实现。
  */
 
 import { encode64, decode64 } from "@/utils/encoding";
@@ -9,20 +9,20 @@ import { fs } from "@/services/fs";
 import { defaultGuidGenerator } from "../utils/codeTransformers";
 import { COMMENT_FILE_PATHS, PLUGIN_DEFAULT_TEMPLATE } from "../config/commands";
 import type {
-  EditContext,
-  EditorConfig,
   CodeEditorAPI,
   ImportArgs,
   MultiLineArgs,
   MultiLineCallback,
+  OpenConfig,
+  OpenCallbacks,
 } from "./types";
 
 /**
  * Handler 依赖接口
  */
 export interface HandlerDeps extends CodeEditorAPI {
-  /** 显示编辑器并设置上下文 */
-  open(context: EditContext, config: EditorConfig): void;
+  /** 新的简洁 open 接口 */
+  open(initialValue: string, config: OpenConfig, callbacks: OpenCallbacks): void;
   /** 获取缩进字符 */
   getIndent(field: string): string;
   /** 获取编辑器模式 */
@@ -63,150 +63,22 @@ const lastOffset: Record<string, number> = {};
  * @returns 4 个入口函数
  */
 export function createHandler(deps: HandlerDeps): Handler {
-  // ========== TableEditContext ==========
-  class TableEditContext implements EditContext {
-    readonly id: string;
-    private readonly isString: boolean;
-
-    constructor(id: string, isString: boolean) {
-      this.id = id;
-      this.isString = isString;
-    }
-
-    confirm(keep?: boolean): void {
-      // 保存滚动位置
-      lastOffset[this.id] = deps.getScrollInfo().top;
-
-      // 格式化代码
-      deps.format();
-
-      // 将值写回表格
-      const value = deps.getValue() || "";
-      const thisTr = document.getElementById(this.id);
-      if (!thisTr) return;
-
-      const input = thisTr.children[2]?.children[0]?.children[0] as HTMLTextAreaElement | undefined;
-      if (!input) return;
-
-      if (this.isString) {
-        input.value = JSON.stringify(value);
-      } else {
-        const tobj = eval(`(${value || "null"})`);
-        const tmap: Record<string, string> = {};
-
-        let tstr = JSON.stringify(
-          tobj,
-          (_k, v) => {
-            if (v instanceof Function) {
-              const guid = defaultGuidGenerator();
-              tmap[guid] = v.toString();
-              return guid;
-            }
-            return v;
-          },
-          4
-        );
-
-        for (const guid in tmap) {
-          tstr = tstr.replace('"' + guid + '"', JSON.stringify(tmap[guid]));
-        }
-
-        input.value = tstr;
-      }
-
-      if (!keep) {
-        deps.hide();
-      } else {
-        alert("写入成功！");
-      }
-
-      // 触发 onchange 事件
-      input.onchange?.(new Event("change"));
-    }
-
-    cancel(): void {
-      // 保存滚动位置
-      lastOffset[this.id] = deps.getScrollInfo().top;
-      deps.hide();
-    }
-  }
-
-  // ========== BlocklyEditContext ==========
-  class BlocklyEditContext implements EditContext {
-    readonly id = "callFromBlockly";
-    private readonly b: unknown;
-    private readonly f: unknown;
-    private readonly callback: MultiLineCallback;
-
-    constructor(b: unknown, f: unknown, callback: MultiLineCallback) {
-      this.b = b;
-      this.f = f;
-      this.callback = callback;
-    }
-
-    confirm(keep?: boolean): void {
-      deps.format();
-      const newValue = deps.getValue() || "";
-      this.callback(newValue, this.b, this.f);
-
-      if (!keep) {
-        deps.hide();
-      } else {
-        alert("写入成功！");
-      }
-    }
-
-    cancel(): void {
-      deps.hide();
-    }
-  }
-
-  // ========== FileEditContext ==========
-  class FileEditContext implements EditContext {
-    readonly id = "importFile";
-    private readonly filename: string;
-
-    constructor(filename: string) {
-      this.filename = filename;
-    }
-
-    confirm(keep?: boolean): void {
-      deps.format();
-      const content = deps.getValue() || "";
-      const encodedContent = encode64(content);
-
-      fs.writeFile(this.filename, encodedContent, "base64", (err) => {
-        if (err) {
-          deps.printe("文件写入失败,请手动粘贴至" + this.filename + "\n" + err);
-        } else {
-          if (!keep) {
-            deps.hide();
-          } else {
-            alert("写入成功！");
-          }
-          deps.printf(this.filename + " 写入成功，F5刷新后生效");
-        }
-      });
-    }
-
-    cancel(): void {
-      deps.hide();
-    }
-  }
-
-  // ========== 入口函数 ==========
+  // ========== DOM 读写辅助函数 ==========
 
   /**
-   * 从表格 textarea 导入内容到编辑器
+   * 从 DOM 读取表格值
    */
-  function importFromTable(id: string, args: ImportArgs): boolean {
+  function readFromDOM(
+    id: string,
+    args: ImportArgs
+  ): { initialValue: string; isString: boolean; input: HTMLTextAreaElement } | null {
     const thisTr = document.getElementById(id);
-    if (!thisTr) return false;
+    if (!thisTr) return null;
 
     const input = thisTr.children[2]?.children[0]?.children[0] as HTMLTextAreaElement | undefined;
     const field = thisTr.children[0]?.getAttribute("title") || "";
 
-    if (!input || input.type !== "textarea") return false;
+    if (!input || input.type !== "textarea") return null;
 
     // 处理默认值
     if ((!input.value || input.value === "null") && args.template) {
@@ -248,30 +120,107 @@ export function createHandler(deps: HandlerDeps): Handler {
       initialValue = tstr || "";
     }
 
-    // 创建上下文并打开编辑器
-    const context = new TableEditContext(id, isString);
-    deps.open(context, {
+    return { initialValue, isString, input };
+  }
+
+  /**
+   * 将值写回 DOM
+   */
+  function writeToDOM(input: HTMLTextAreaElement, value: string, isString: boolean): void {
+    if (isString) {
+      input.value = JSON.stringify(value);
+    } else {
+      const tobj = eval(`(${value || "null"})`);
+      const tmap: Record<string, string> = {};
+
+      let tstr = JSON.stringify(
+        tobj,
+        (_k, v) => {
+          if (v instanceof Function) {
+            const guid = defaultGuidGenerator();
+            tmap[guid] = v.toString();
+            return guid;
+          }
+          return v;
+        },
+        4
+      );
+
+      for (const guid in tmap) {
+        tstr = tstr.replace('"' + guid + '"', JSON.stringify(tmap[guid]));
+      }
+
+      input.value = tstr;
+    }
+
+    // 触发 onchange 事件
+    input.onchange?.(new Event("change"));
+  }
+
+  // ========== 入口函数 ==========
+
+  /**
+   * 从表格 textarea 导入内容到编辑器
+   * 通过 open 接口实现
+   */
+  function importFromTable(id: string, args: ImportArgs): boolean {
+    const result = readFromDOM(id, args);
+    if (!result) return false;
+
+    const { initialValue, isString, input } = result;
+
+    deps.open(
       initialValue,
-      lint: args.lint,
-      isString,
-      preview: args.preview,
-      scrollTop: lastOffset[id] || 0,
-    });
+      {
+        lint: args.lint,
+        isString,
+        preview: args.preview,
+        scrollTop: lastOffset[id] || 0,
+        contextId: id,
+      },
+      {
+        onConfirm: (value) => {
+          // 保存滚动位置
+          lastOffset[id] = deps.getScrollInfo().top;
+          // 写回 DOM
+          writeToDOM(input, value, isString);
+        },
+        onCancel: () => {
+          // 保存滚动位置
+          lastOffset[id] = deps.getScrollInfo().top;
+        },
+      }
+    );
 
     return true;
   }
 
   /**
    * 导入文件到编辑器
+   * 通过 open 接口实现
    */
   function importFile(filename: string): void {
-    const context = new FileEditContext(filename);
-
     // 先显示 loading 状态
-    deps.open(context, {
-      initialValue: "loading",
-      lint: true,
-    });
+    deps.open(
+      "loading",
+      {
+        lint: true,
+        contextId: "importFile",
+      },
+      {
+        onConfirm: (content) => {
+          // 将内容写回文件
+          const encodedContent = encode64(content);
+          fs.writeFile(filename, encodedContent, "base64", (err) => {
+            if (err) {
+              deps.printe("文件写入失败,请手动粘贴至" + filename + "\n" + err);
+            } else {
+              deps.printf(filename + " 写入成功，F5刷新后生效");
+            }
+          });
+        },
+      }
+    );
 
     // 异步加载文件内容
     fs.readFile(filename, "base64", (err, data) => {
@@ -301,6 +250,7 @@ export function createHandler(deps: HandlerDeps): Handler {
 
   /**
    * Blockly 多行编辑
+   * 通过 open 接口实现
    */
   function multiLineEdit(
     value: string,
@@ -309,15 +259,21 @@ export function createHandler(deps: HandlerDeps): Handler {
     args: MultiLineArgs,
     callback: MultiLineCallback
   ): void {
-    const context = new BlocklyEditContext(b, f, callback);
-
     // 将 \\n 转换为实际换行符
     const initialValue = value.split("\\n").join("\n") || "";
 
-    deps.open(context, {
+    deps.open(
       initialValue,
-      lint: args.lint,
-    });
+      {
+        lint: args.lint,
+        contextId: "callFromBlockly",
+      },
+      {
+        onConfirm: (newValue) => {
+          callback(newValue, b, f);
+        },
+      }
+    );
   }
 
   return {

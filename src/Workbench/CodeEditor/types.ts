@@ -3,7 +3,7 @@
  */
 
 import type { Editor, EditorFromTextArea } from "codemirror";
-import type { ImportArgs, MultiLineCallback } from "./contexts";
+import type { ImportArgs, MultiLineCallback, OpenConfig, OpenCallbacks } from "./contexts";
 
 /**
  * CodeMirror 编辑器实例类型
@@ -20,10 +20,14 @@ export type CodeMirrorInstance = Editor | EditorFromTextArea;
  * - import: editor_table.ts 导入表格数据
  * - multiLineEdit: editor_blockly.ts 从 Blockly 编辑
  * - editCommentJs: 6个面板组件调用
+ * - open: 新的简洁接口，供现代化调用方使用
  */
 export interface EditorMultiApi {
   // 属性 (editor_ui.ts 使用)
   readonly id: string;
+
+  // 新的简洁接口
+  open: (initialValue: string, config: OpenConfig, callbacks: OpenCallbacks) => void;
 
   // Table handler (editor_table.ts)
   import: (id: string, args: ImportArgs) => boolean;

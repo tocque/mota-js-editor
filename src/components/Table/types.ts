@@ -147,26 +147,17 @@ export interface TableProps {
   editMode?: EditMode;
 }
 
-/** Props for TableRow component */
+/** 
+ * Props for TableRow component (重构后简化版)
+ * 
+ * 重构说明：
+ * - 原先 TableRowProps 包含所有展开的属性和回调
+ * - 现在简化为只接收 node，回调通过 DataStore.useStore() 获取
+ * - checkRange 验证在 TableRow 内部统一处理
+ */
 export interface TableRowProps {
-  /** Field path */
-  field: string;
-  /** Short field name */
-  shortField: string;
-  /** Current value */
-  value: unknown;
-  /** Field configuration */
-  config: FieldConfig;
-  /** Full comment text */
-  comment: string;
-  /** Short comment for display */
-  shortComment?: string;
-  /** Value change callback */
-  onChange: (value: unknown) => void;
-  /** 打开外部编辑器回调，传递 guid 用于外部编辑器 */
-  onOpenExternalEditor?: (guid: string) => void;
-  /** Double click callback，传递 guid 用于外部编辑器 */
-  onDoubleClick?: (guid: string) => void;
+  /** 节点数据 */
+  node: TableNode;
 }
 
 /** Props for GapRow component */

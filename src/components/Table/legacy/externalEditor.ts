@@ -41,7 +41,7 @@ function getOpenColorPicker(): OpenColorPickerFunc | null {
  *
  * 根据字段类型调用对应的外部编辑器：
  * - event: 调用 editor_blockly.import
- * - textarea: 调用 editor_multi.import
+ * - textarea: 调用 editor_multi.open
  * - material: 调用 editor.uievent.selectMaterial
  * - color: 调用 openColorPicker
  * - point: 调用 editor.uievent.selectPoint
@@ -76,12 +76,56 @@ export function openExternalEditor(
     case 'textarea': {
       const editorMulti = getEditorMulti();
       if (editorMulti) {
-        editorMulti.import(guid, {
-          lint: config._lint,
-          string: typeof config._string === 'boolean' ? config._string : undefined,
-          template: config._template,
-          preview: config._preview,
-        });
+        // 获取当前值
+        const currentValue = getValue(field);
+
+        // 判断是否为字符串模式
+        const isString = typeof config._string === 'boolean' ? config._string : false;
+
+        // 准备初始值
+        let initialValue: string;
+        if (isString) {
+          // 字符串模式：直接使用字符串值
+          initialValue = currentValue != null ? String(currentValue) : (config._template || '');
+        } else {
+          // 对象模式：JSON 序列化
+          if (currentValue != null) {
+            try {
+              initialValue = JSON.stringify(currentValue, null, 2);
+            } catch {
+              initialValue = String(currentValue);
+            }
+          } else {
+            initialValue = config._template || '';
+          }
+        }
+
+        // 调用 open 接口
+        editorMulti.open(
+          initialValue,
+          {
+            lint: config._lint,
+            isString,
+            preview: config._preview,
+          },
+          {
+            onConfirm: (value) => {
+              // 根据模式转换值
+              let newValue: unknown;
+              if (isString) {
+                newValue = value;
+              } else {
+                try {
+                  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+                  newValue = eval(`(${value || 'null'})`);
+                } catch {
+                  newValue = value;
+                }
+              }
+              setValue(field, newValue);
+            },
+          },
+        );
       } else {
         console.warn('editor_multi not available');
       }

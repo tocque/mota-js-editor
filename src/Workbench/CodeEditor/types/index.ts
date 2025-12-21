@@ -54,36 +54,12 @@ export interface TernCoreDef {
 
 // ============== 编辑器状态类型 ==============
 
-/** 编辑上下文 */
-export interface EditContext {
-  /** 编辑的目标ID，可能是表格行ID、'callFromBlockly'、'importFile' */
-  id: string;
-  /** 是否以字符串模式编辑 */
-  isString: boolean;
-  /** 是否启用 lint 和自动补全 */
-  lintAutocomplete: boolean;
-  /** 预览回调标识 */
-  preview?: string;
-}
-
 /** 代码转换选项 */
 export interface CodeTransformOptions {
   /** 缩进字符，默认 '\t' */
   indent?: string | number;
   /** GUID 生成函数 */
   guidGenerator?: () => string;
-}
-
-/** 导入参数 */
-export interface ImportArgs {
-  /** 是否启用 lint */
-  lint?: boolean;
-  /** 是否以字符串模式 */
-  string?: boolean;
-  /** 默认模板 */
-  template?: string;
-  /** 预览标识 */
-  preview?: string;
 }
 
 // ============== 命令配置类型 ==============
@@ -104,19 +80,3 @@ export type CommandsNameMap = Record<ShortcutKey, string>;
 
 /** 注释文件路径映射 */
 export type CommentFilePathMap = Record<string, string>;
-
-// ============== 多行编辑回调类型 ==============
-
-/** Blockly 多行编辑回调 */
-export type MultiLineCallback = (
-  newValue: string,
-  block: unknown,
-  field: unknown
-) => void;
-
-/** 多行编辑参数 */
-export type MultiLineArgs = [
-  block: unknown | null,
-  field: unknown | null,
-  callback: MultiLineCallback | null,
-];

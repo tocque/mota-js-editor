@@ -10,6 +10,11 @@ import { getByFieldPath, validateId } from '../utils';
  *
  * 使用 ParameterfulStore 模式，接收 data、commentObj 和回调函数作为参数。
  * 构建表格树结构并暴露回调供子组件使用。
+ *
+ * 架构说明：
+ * - TableRow 直接调用 DataStore.useStore() 获取回调
+ * - 避免了 props drilling，简化组件层级
+ * - checkRange 验证在 TableRow 中统一处理，DataStore 只负责数据和回调
  */
 
 /** DataStore Provider 的参数 */

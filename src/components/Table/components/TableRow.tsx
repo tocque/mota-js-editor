@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, type FC } from 'react';
-import type { TableRowProps, FieldType, CheckboxSetConfig } from '../types';
+import type { TableRowProps, FieldType, CheckboxSetConfig, FieldConfig } from '../types';
 import { ActionButtons } from './ActionButtons';
 import {
   TextareaInput,
@@ -7,8 +7,11 @@ import {
   CheckboxInput,
   CheckboxSet,
 } from './inputs';
-import { checkRange } from '../utils/validation';
+import { checkRange, getByFieldPath, getParentFieldPath } from '../utils';
 import { generateGuid } from '@/utils/json';
+import { DataStore } from '../stores';
+import { openExternalEditor } from '../legacy/externalEditor';
+import { noop } from '@/utils/empty';
 
 /**
  * 获取全局 printe 函数
@@ -26,7 +29,7 @@ const getPrinte = (): ((msg: string) => void) | undefined => {
 const renderInput = (
   type: FieldType | undefined,
   value: unknown,
-  config: TableRowProps['config'],
+  config: FieldConfig,
   onChange: (value: unknown) => void,
 ): React.ReactNode => {
   switch (type) {
@@ -109,20 +112,24 @@ const htmlEscape = (str: string): string =>
  * - 值输入列（根据 config._type 选择对应的输入组件）
  * - 操作按钮列
  *
- * 支持双击事件和值变更处理。
+ * 架构说明：
+ * - 直接访问 DataStore 获取回调，避免 props 传递
+ * - 统一处理 checkRange 验证，无论值来自直接输入还是外部编辑器
+ * - 支持双击事件（根据 editMode 执行不同操作）
+ *
+ * checkRange 验证：
+ * - handleValueChange: 直接输入时验证
+ * - handleOpenExternalEditor 内的 setValue: 外部编辑器返回值时验证
+ * - 验证失败时显示错误消息并拒绝保存
  */
 export const TableRow: FC<TableRowProps> = (props) => {
-  const {
-    field,
-    shortField,
-    value,
-    config,
-    comment,
-    shortComment,
-    onChange,
-    onOpenExternalEditor,
-    onDoubleClick,
-  } = props;
+  const { node } = props;
+
+  // 从 node 解构所需属性
+  const { field, shortField, value, config, comment, shortComment } = node;
+
+  // 直接从 DataStore 获取回调
+  const { data, onValueChange, onAddItem, onDeleteItem, onOpenExternalEditor, editMode } = DataStore.useStore();
 
   const type = config._type;
 
@@ -154,10 +161,66 @@ export const TableRow: FC<TableRowProps> = (props) => {
     }
   }, [comment]);
 
-  // 处理打开外部编辑器按钮点击 - 调用外部传入的回调，传递 guid
+  // 统一的值变更处理（包含 checkRange 验证）
+  // 无论值来自直接输入还是外部编辑器，都会经过此验证
+  const handleValueChange = useCallback((newValue: unknown) => {
+    // 验证 _range
+    if (!checkRange(config, newValue)) {
+      const printe = getPrinte();
+      printe?.(field + ' : 输入的值不合要求,请鼠标放置在注释上查看说明');
+      return; // 不触发 onChange
+    }
+    onValueChange(field, newValue);
+  }, [config, field, onValueChange]);
+
+  // 打开外部编辑器 - 如果外部提供了回调则使用，否则使用内置实现
+  // 关键：内置实现中的 setValue 使用带 checkRange 验证的逻辑
   const handleOpenExternalEditor = useCallback(() => {
-    onOpenExternalEditor?.(guid);
-  }, [onOpenExternalEditor, guid]);
+    // 检查是否有外部提供的回调（非 noop）
+    if (onOpenExternalEditor !== noop) {
+      onOpenExternalEditor(field, config._type, config, guid);
+    } else {
+      // 使用内置的外部编辑器集成
+      const getValue = (f: string) => getByFieldPath(data, f);
+      // 关键：使用带 checkRange 验证的 setValue
+      const setValue = (f: string, newValue: unknown) => {
+        if (!checkRange(config, newValue)) {
+          const printe = getPrinte();
+          printe?.(f + ' : 输入的值不合要求');
+          return;
+        }
+        onValueChange(f, newValue);
+      };
+      openExternalEditor(field, config._type, config, guid, getValue, setValue);
+    }
+  }, [field, config, guid, data, onValueChange, onOpenExternalEditor]);
+
+  // 双击处理 - 根据 editMode 调用不同的回调
+  const handleDoubleClick = useCallback(() => {
+    const mode = editMode;
+
+    if (mode === 'change') {
+      // 正常编辑模式：打开外部编辑器
+      handleOpenExternalEditor();
+    } else if (mode === 'add') {
+      // 添加模式：获取父路径，提示输入新 ID
+      const parentPath = getParentFieldPath(field);
+      const id = prompt('请输入新项的 ID');
+      if (id) {
+        onAddItem(parentPath, id);
+      }
+    } else if (mode === 'delete') {
+      // 删除模式：检查是否允许删除（null 验证）
+      if (!checkRange(config, null)) {
+        const printe = getPrinte();
+        printe?.(field + ' : 该值不允许为null，无法删除');
+        return;
+      }
+      if (confirm('确定要删除吗？')) {
+        onDeleteItem(field);
+      }
+    }
+  }, [field, config, editMode, handleOpenExternalEditor, onAddItem, onDeleteItem]);
 
   // 处理复制按钮点击
   const handleCopyClick = useCallback(() => {
@@ -190,24 +253,13 @@ export const TableRow: FC<TableRowProps> = (props) => {
   const handleClick = useCallback(() => {
     const now = Date.now();
     if (now - lastClickRef.current < 500) {
-      // 双击触发，传递 guid
-      onDoubleClick?.(guid);
+      // 双击触发
+      handleDoubleClick();
       lastClickRef.current = 0; // 重置，避免连续触发
     } else {
       lastClickRef.current = now;
     }
-  }, [onDoubleClick, guid]);
-
-  // 包装 onChange，在调用前进行 _range 验证
-  const handleValueChange = useCallback((newValue: unknown) => {
-    // 验证 _range
-    if (!checkRange(config, newValue)) {
-      const printe = getPrinte();
-      printe?.(field + ' : 输入的值不合要求,请鼠标放置在注释上查看说明');
-      return; // 不触发 onChange
-    }
-    onChange(newValue);
-  }, [config, field, onChange]);
+  }, [handleDoubleClick]);
 
   return (
     <tr id={guid} data-field={dataField} onClick={handleClick}>

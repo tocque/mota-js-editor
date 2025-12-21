@@ -11,4 +11,6 @@ export type {
   ImportArgs,
   MultiLineArgs,
   MultiLineCallback,
+  OpenConfig,
+  OpenCallbacks,
 } from "./types";
