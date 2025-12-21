@@ -1,5 +1,6 @@
 import { batchCreateMapFiles } from "@/fs/maps";
 import { useGameData } from "@/stores/GameDataStore";
+import { isValidFloorId } from "@/utils/string";
 import { type FC, useState } from "react";
 
 interface BatchCreateMapsFormProps {
@@ -48,7 +49,7 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
         printe("同名楼层已存在！(不区分大小写)");
         return;
       }
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(floorId)) {
+      if (!isValidFloorId(floorId)) {
         printe("楼层名 " + floorId + " 不合法！请使用字母、数字、下划线，且不能以数字开头！");
         return;
       }

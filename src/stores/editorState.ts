@@ -1,0 +1,41 @@
+/**
+ * EditorState - 编辑器全局状态
+ *
+ * 使用 @tanstack/store 管理编辑器的全局状态，
+ * 提供响应式的状态订阅机制。
+ */
+
+import { Store } from '@tanstack/store';
+import { useStore } from '@tanstack/react-store';
+
+interface EditorState {
+  currentFloorId: string;
+}
+
+/**
+ * 编辑器状态 Store
+ *
+ * 初始值从全局 editor.currentFloorId 获取
+ */
+export const editorStateStore = new Store<EditorState>({
+  currentFloorId: typeof editor !== 'undefined' ? editor.currentFloorId : '',
+});
+
+/**
+ * 更新当前楼层 ID
+ */
+export function setCurrentFloorId(floorId: string): void {
+  editorStateStore.setState((state) => ({
+    ...state,
+    currentFloorId: floorId,
+  }));
+}
+
+/**
+ * 获取当前楼层 ID 的 Hook
+ *
+ * 自动订阅状态变化，当 currentFloorId 变化时触发重渲染
+ */
+export function useCurrentFloorId(): string {
+  return useStore(editorStateStore, (state) => state.currentFloorId);
+}

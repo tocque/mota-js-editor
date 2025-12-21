@@ -71,3 +71,26 @@ export function isFunctionString(str: string): boolean {
 export function isJsonStringFormat(value: string): boolean {
   return typeof value === "string" && value.slice(0, 1) === '"';
 }
+
+/** floorId 格式验证正则：字母或下划线开头，后跟字母、数字或下划线 */
+const FLOOR_ID_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+/**
+ * 检查 floorId 是否合法
+ *
+ * 合法的 floorId 必须以字母或下划线开头，后跟字母、数字或下划线
+ *
+ * @param id - 要检查的 floorId
+ * @returns 是否是合法的 floorId
+ *
+ * @example
+ * ```ts
+ * isValidFloorId('MT0') // => true
+ * isValidFloorId('_floor1') // => true
+ * isValidFloorId('123abc') // => false (数字开头)
+ * isValidFloorId('floor-1') // => false (包含连字符)
+ * ```
+ */
+export function isValidFloorId(id: string): boolean {
+  return FLOOR_ID_PATTERN.test(id);
+}

@@ -7,7 +7,7 @@
 
 import { applyActions, type Action } from '@/utils/action';
 import { encode64 } from '@/utils/encoding';
-import { serializeToJsFile, alertWhenCompress } from '@/utils/serialize';
+import { serializeToJsDataFile, alertWhenCompress } from '@/utils/serialize';
 import { createWriteExecutor } from '@/utils/writeExecutor';
 import { fs } from '@/services/fs';
 
@@ -68,7 +68,7 @@ export async function writeTowerData(actions: Action[]): Promise<void> {
   // 文件写入放到 writeExecutor 中处理并发
   // 即使写入任务被合并，序列化的是当前最新的数据对象状态
   await writeExecutor.exec(async () => {
-    const content = serializeToJsFile(DATA_VAR_NAME, getDataObject());
+    const content = serializeToJsDataFile(DATA_VAR_NAME, getDataObject());
     await fs.promises.writeFile(DATA_FILE_PATH, encode64(content), 'base64');
   });
 }

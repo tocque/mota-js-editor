@@ -24,6 +24,29 @@ export interface CoreStatus {
   fgmaps: Record<string, unknown>;
 }
 
+/** 楼层数据类型 */
+export interface FloorData {
+  floorId: string;
+  title?: string;
+  name?: string;
+  width?: number;
+  height?: number;
+  map?: number[][];
+  bgmap?: number[][];
+  fgmap?: number[][];
+  events?: Record<string, unknown>;
+  beforeBattle?: Record<string, unknown>;
+  afterBattle?: Record<string, unknown>;
+  afterGetItem?: Record<string, unknown>;
+  afterOpenDoor?: Record<string, unknown>;
+  changeFloor?: Record<string, unknown>;
+  autoEvent?: Record<string, unknown>;
+  cannotMove?: Record<string, unknown>;
+  upFloor?: [number, number];
+  downFloor?: [number, number];
+  [key: string]: unknown;
+}
+
 /** 简化的 core 类型 */
 export interface CoreType {
   material: CoreMaterial;
@@ -31,6 +54,8 @@ export interface CoreType {
   canvas: Record<string, CanvasRenderingContext2D>;
   values: Record<string, unknown>;
   flags: Record<string, unknown>;
+  floors: Record<string, FloorData>;
+  floorIds: string[];
   [key: string]: unknown;
 }
 

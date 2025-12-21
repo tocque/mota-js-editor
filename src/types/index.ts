@@ -7,6 +7,7 @@ export type {
   CoreMaterial,
   CoreStatus,
   CoreType,
+  FloorData,
   FunctionsType,
   DataCommentType,
 } from "./game";

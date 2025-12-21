@@ -1,4 +1,5 @@
-import { queryClient, TOWER_QUERY_KEY } from '@/queryClient';
+import { queryClient, TOWER_QUERY_KEY, FLOOR_QUERY_KEY } from '@/queryClient';
+import { setCurrentFloorId } from '@/stores/editorState';
 
 export const editor_mode = function (editor) {
     var core = editor.core;
@@ -288,15 +289,14 @@ export const editor_mode = function (editor) {
     }
 
     editor_mode.prototype.floor = function (callback) {
-        var objs = [];
-        editor.file.editFloor([], function (objs_) {
-            objs = objs_;
-            //console.log(objs_)
-        });
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_4a3b1b09_b2fb_4bdf_b9ab_9f4cdac14c74').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
+        const floorId = editor.currentFloorId;
+
+        // 更新 TanStack Store 状态
+        setCurrentFloorId(floorId);
+
+        // 使用 React Query 刷新 FloorPanel 数据
+        queryClient.refetchQueries({ queryKey: FLOOR_QUERY_KEY(floorId) });
+
         if (Boolean(callback)) callback();
     }
 

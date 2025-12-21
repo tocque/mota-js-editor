@@ -2,10 +2,8 @@
  * towerDataService 单元测试
  *
  * 测试全塔属性数据服务功能
- * - 数据读取和 main 字段合并
  * - 数据写入和序列化
- *
- * Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5
+ * - 兼容 API
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,9 +26,9 @@ vi.mock('@/services/fs', () => ({
 
 // Mock serialize 模块
 vi.mock('@/utils/serialize', () => ({
-  serializeToJsFile: vi.fn((varName: string, data: unknown) => {
-    return `var ${varName} =\n${JSON.stringify(data, null, '\t')}`;
-  }),
+  serializeToJsDataFile: vi.fn(
+    (varName: string, data: unknown) => `var ${varName} =\n${JSON.stringify(data, null, '\t')}`,
+  ),
   alertWhenCompress: vi.fn(),
 }));
 
@@ -64,23 +62,6 @@ describe('towerDataService', () => {
         floorIds: ['MT0', 'sample0'],
         name: 'Test Tower',
       },
-      file: {
-        dataComment: {
-          _type: 'object',
-          _data: {
-            firstData: { _type: 'object', _data: {} },
-            values: { _type: 'object', _data: {} },
-            main: {
-              _type: 'object',
-              _data: {
-                floorIds: { _leaf: true },
-                name: { _leaf: true },
-                missingField: { _leaf: true },
-              },
-            },
-          },
-        },
-      },
       useCompress: false,
     };
     vi.stubGlobal('editor', mockEditor);
@@ -92,78 +73,6 @@ describe('towerDataService', () => {
     // 清理全局对象
     delete mockWindow['data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d'];
     vi.stubGlobal('editor', undefined);
-  });
-
-  describe('getCommentObject', () => {
-    it('应该返回 editor.file.dataComment 对象', async () => {
-      const { getCommentObject } = await importModule();
-      const commentObj = getCommentObject();
-
-      expect(commentObj).toBeDefined();
-      expect(commentObj._type).toBe('object');
-      expect(commentObj._data).toBeDefined();
-    });
-
-    it('当 editor.file.dataComment 不可用时应该抛出错误', async () => {
-      // 移除 dataComment
-      vi.stubGlobal('editor', { file: {} });
-
-      const { getCommentObject } = await importModule();
-      expect(() => getCommentObject()).toThrow('editor.file.dataComment 不可用');
-    });
-
-    it('当 editor 不可用时应该抛出错误', async () => {
-      vi.stubGlobal('editor', undefined);
-
-      const { getCommentObject } = await importModule();
-      expect(() => getCommentObject()).toThrow('editor.file.dataComment 不可用');
-    });
-  });
-
-  describe('readTowerData', () => {
-    it('应该返回数据对象和注释配置', async () => {
-      const { readTowerData } = await importModule();
-      const result = readTowerData();
-
-      expect(result.data).toBeDefined();
-      expect(result.commentObj).toBeDefined();
-    });
-
-    it('应该合并 data 对象和 main 字段', async () => {
-      const { readTowerData } = await importModule();
-      const result = readTowerData();
-
-      expect(result.data.firstData).toBeDefined();
-      expect(result.data.values).toBeDefined();
-      expect(result.data.main).toBeDefined();
-    });
-
-    it('应该从 data 对象中获取 main 字段的值', async () => {
-      const { readTowerData } = await importModule();
-      const result = readTowerData();
-      const main = result.data.main as Record<string, unknown>;
-
-      expect(main.floorIds).toEqual(['MT0', 'sample0']);
-      expect(main.name).toBe('Test Tower');
-    });
-
-    it('当 main 字段在 editor.main 中不存在时应该设为 null', async () => {
-      const { readTowerData } = await importModule();
-      const result = readTowerData();
-      const main = result.data.main as Record<string, unknown>;
-
-      // missingField 在 commentObj 中定义但不在 editor.main 中
-      expect(main.missingField).toBeNull();
-    });
-
-    it('应该只包含 commentObj 中定义的 main 字段', async () => {
-      const { readTowerData } = await importModule();
-      const result = readTowerData();
-      const main = result.data.main as Record<string, unknown>;
-
-      // 只有 commentObj._data.main._data 中定义的字段
-      expect(Object.keys(main)).toEqual(['floorIds', 'name', 'missingField']);
-    });
   });
 
   describe('writeTowerData', () => {
@@ -178,13 +87,13 @@ describe('towerDataService', () => {
 
     it('应该应用 change action 到数据对象', async () => {
       const { fs } = await import('@/services/fs');
-      const { serializeToJsFile } = await import('@/utils/serialize');
+      const { serializeToJsDataFile } = await import('@/utils/serialize');
       const { writeTowerData } = await importModule();
 
       await writeTowerData([['change', "['firstData']['version']", '2.0.0']]);
 
-      // 验证 serializeToJsFile 被调用
-      expect(serializeToJsFile).toHaveBeenCalled();
+      // 验证 serializeToJsDataFile 被调用
+      expect(serializeToJsDataFile).toHaveBeenCalled();
       expect(fs.promises.writeFile).toHaveBeenCalled();
 
       // 验证数据对象被修改
@@ -258,39 +167,32 @@ describe('towerDataService', () => {
     });
   });
 
-  describe('fetchTowerData (兼容 API)', () => {
-    it('应该返回与 readTowerData 相同的结果', async () => {
+  describe('fetchTowerData', () => {
+    it('应该返回数据对象', async () => {
       const { fetchTowerData } = await importModule();
       const result = await fetchTowerData();
 
-      expect(result.data).toBeDefined();
-      expect(result.commentObj).toBeDefined();
+      expect(result).toBeDefined();
+      expect(result.firstData).toBeDefined();
+      expect(result.values).toBeDefined();
+      expect(result.main).toBeDefined();
     });
 
-    it('应该返回 Promise<TowerData> 类型', async () => {
+    it('应该返回 Promise 类型', async () => {
       const { fetchTowerData } = await importModule();
       const result = fetchTowerData();
 
-      // 验证返回的是 Promise
       expect(result).toBeInstanceOf(Promise);
-
-      // 验证 resolve 后的数据结构
-      const data = await result;
-      expect(data).toHaveProperty('data');
-      expect(data).toHaveProperty('commentObj');
     });
 
-    it('返回的数据应包含正确的 main 字段结构', async () => {
+    it('返回的数据应包含正确的结构', async () => {
       const { fetchTowerData } = await importModule();
       const result = await fetchTowerData();
-      const main = result.data.main as Record<string, unknown>;
 
-      // 验证 main 字段包含 commentObj 中定义的所有字段
-      expect(main).toHaveProperty('floorIds');
-      expect(main).toHaveProperty('name');
-      expect(main).toHaveProperty('missingField');
-      // missingField 应为 null（因为不在 editor.main 中）
-      expect(main.missingField).toBeNull();
+      expect(result.main).toHaveProperty('floorIds');
+      expect(result.main).toHaveProperty('name');
+      expect((result.main as Record<string, unknown>).floorIds).toEqual(['MT0', 'sample0']);
+      expect((result.main as Record<string, unknown>).name).toBe('Test Tower');
     });
   });
 
@@ -317,10 +219,8 @@ describe('towerDataService', () => {
       const { saveActions } = await importModule();
       const result = saveActions([['change', "['firstData']['version']", '2.0.0']]);
 
-      // 验证返回的是 Promise
       expect(result).toBeInstanceOf(Promise);
 
-      // 验证 resolve 后的值为 undefined
       const resolved = await result;
       expect(resolved).toBeUndefined();
     });
