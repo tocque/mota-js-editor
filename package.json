@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@tanstack/react-query": "^5.90.12",
     "@zip.js/zip.js": "^2.8.11",
     "antd": "^6.0.1",
     "awesomplete": "^1.1.7",
@@ -24,11 +26,11 @@
     "lz-string": "^1.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tern": "^0.24.3",
-    "zustand": "^5.0.9"
+    "tern": "^0.24.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@testing-library/react": "^16.3.1",
     "@types/awesomplete": "^1.1.16",
     "@types/codemirror": "^5.60.17",
     "@types/color-convert": "^2.0.4",

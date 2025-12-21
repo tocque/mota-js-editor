@@ -1,3 +1,5 @@
+import { queryClient, TOWER_QUERY_KEY } from '@/queryClient';
+
 export const editor_mode = function (editor) {
     var core = editor.core;
 
@@ -299,15 +301,8 @@ export const editor_mode = function (editor) {
     }
 
     editor_mode.prototype.tower = function (callback) {
-        var objs = [];
-        editor.file.editTower([], function (objs_) {
-            objs = objs_;
-            //console.log(objs_)
-        });
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_b6a03e4c_5968_4633_ac40_0dfdd2c9cde5').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
+        // 使用 React Query 立即刷新 TowerPanel 数据
+        queryClient.refetchQueries({ queryKey: TOWER_QUERY_KEY });
         if (Boolean(callback)) callback();
     }
 

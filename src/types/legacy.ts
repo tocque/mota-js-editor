@@ -52,7 +52,7 @@ export interface EditorUiEvent {
 /** 编辑器主对象接口 */
 export interface Editor {
   isMobile?: boolean;
-  mode?: { indent?: (field: string) => string };
+  mode: EditorMode;
   config?: {
     get?: (key: string, defaultValue: number) => number;
     set?: (key: string, value: number) => void;
@@ -73,6 +73,7 @@ export interface EditorMode {
   doubleClickMode?: 'change' | 'add' | 'delete';
   addAction: (action: [string, string, unknown]) => void;
   onmode: (mode: string, callback?: () => void) => void;
+  changeDoubleClickModeByButton: (mode: 'add' | 'delete') => void;
 }
 
 // ============== 全局函数类型 ==============

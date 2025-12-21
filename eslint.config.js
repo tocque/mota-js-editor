@@ -23,6 +23,7 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': 'warn',
       'prefer-arrow-callback': 'warn',
       'object-shorthand': 'warn',
+      'arrow-body-style': ['warn', 'as-needed'],
     }
   },
 ])

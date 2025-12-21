@@ -3,7 +3,18 @@
 /// <reference types="tern" />
 
 import type { fs as FsModule } from "@/services/fs";
-import type { CoreType, FunctionsType, DataCommentType } from "@/types";
+import type {
+  CoreType,
+  FunctionsType,
+  DataCommentType,
+  Editor,
+  EditorMode,
+  EditorBlockly,
+  OpenColorPickerFunc,
+  PrinteFunc,
+  PrintfFunc,
+  PrintiFunc,
+} from "@/types";
 import type { EditorMultiApi } from "@/Workbench/CodeEditor/createLegacyApi";
 
 // ============== 全局变量声明 ==============
@@ -16,30 +27,16 @@ declare global {
   const core: CoreType;
 
   /** 编辑器对象 */
-  const editor: {
-    isMobile?: boolean;
-    mode?: { indent?: (field: string) => string };
-    config?: {
-      get?: (key: string, defaultValue: number) => number;
-      set?: (key: string, value: number) => void;
-    };
-    uievent?: {
-      previewEditorMulti?: (preview: unknown, value: string) => void;
-    };
-    util?: {
-      encode64?: (str: string) => string;
-      decode64?: (str: string) => string;
-    };
-  } | undefined;
+  const editor: Editor | undefined;
 
   /** 编辑器模式 */
-  const editor_mode: { mode: string } | undefined;
+  const editor_mode: EditorMode | undefined;
 
   /** 多行编辑器 API（由 React 组件暴露） */
   var editor_multi: EditorMultiApi | undefined;
 
   /** Blockly 编辑器 */
-  const editor_blockly: unknown;
+  const editor_blockly: EditorBlockly | undefined;
 
   /** 选择框控件 */
   const selectBox: { isSelected: (value: boolean) => void } | undefined;
@@ -55,27 +52,30 @@ declare global {
 
   // ============== 全局函数 ==============
 
+  /** 打开颜色选择器 */
+  const openColorPicker: OpenColorPickerFunc | undefined;
+
   /** 确认颜色选择 */
   function confirmColor(): void;
 
   /** 打印成功消息 */
-  function printf(msg: string): void;
+  const printf: PrintfFunc;
 
   /** 打印错误消息 */
-  function printe(msg: unknown): void;
+  const printe: PrinteFunc;
 
   /** 打印信息消息 */
-  function printi(msg: string): void;
+  const printi: PrintiFunc;
 
   // ============== Window 扩展 ==============
 
   interface Window {
     core: CoreType;
-    editor: typeof editor;
-    editor_mode: typeof editor_mode;
+    editor: Editor | undefined;
+    editor_mode: EditorMode | undefined;
     editor_multi: EditorMultiApi | undefined;
-    editor_blockly: unknown;
+    editor_blockly: EditorBlockly | undefined;
+    openColorPicker: OpenColorPickerFunc | undefined;
     tern: typeof import("tern");
   }
 }
-
