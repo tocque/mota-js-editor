@@ -7,7 +7,7 @@
  * 这些函数在使用 Table 组件时传入，不耦合在组件内部。
  */
 
-import type { EditorBlockly, EditorMulti, Editor, EditorMode, OpenColorPickerFunc } from '@/types';
+import type { EditorBlockly, EditorMulti, Editor, OpenColorPickerFunc } from '@/types';
 import type { FieldConfig, FieldType } from '../types';
 
 /**
@@ -51,11 +51,6 @@ export interface EditClickHandlerOptions {
    */
   setValue?: (field: string, value: unknown) => void;
   /**
-   * 获取元素的 guid（用于 blockly 和 multi 编辑器）
-   * 如果不提供，将使用 field 作为 guid
-   */
-  getGuid?: (field: string) => string;
-  /**
    * 获取元素的边界框（用于 color picker 定位）
    */
   getBoundingRect?: (field: string) => DOMRect | null;
@@ -74,14 +69,13 @@ export interface EditClickHandlerOptions {
  * - popCheckboxSet: 调用 editor.uievent.popCheckboxSet
  *
  * @param options - 配置选项
- * @returns 编辑按钮点击处理函数
+ * @returns 编辑按钮点击处理函数，接收 field、type、config 和 guid 参数
  *
  * @example
  * ```tsx
  * const handleEditClick = createEditClickHandler({
  *   getValue: (field) => getValueFromStore(field),
  *   setValue: (field, value) => updateStore(field, value),
- *   getGuid: (field) => document.querySelector(`[data-field="${field}"]`)?.id,
  * });
  *
  * <Table
@@ -93,11 +87,10 @@ export interface EditClickHandlerOptions {
  */
 export function createEditClickHandler(
   options: EditClickHandlerOptions = {},
-): (field: string, type: FieldType | undefined, config: FieldConfig) => void {
-  const { getValue, setValue, getGuid, getBoundingRect } = options;
+): (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void {
+  const { getValue, setValue, getBoundingRect } = options;
 
-  return (field: string, type: FieldType | undefined, config: FieldConfig) => {
-    const guid = getGuid?.(field) ?? field;
+  return (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => {
 
     switch (type) {
       case 'event': {
@@ -255,70 +248,3 @@ export function createEditClickHandler(
   };
 }
 
-/** createDoubleClickHandler 的配置选项 */
-export interface DoubleClickHandlerOptions extends EditClickHandlerOptions {
-  /** 添加模式下的回调 */
-  onAdd?: (field: string, config: FieldConfig) => void;
-  /** 删除模式下的回调 */
-  onDelete?: (field: string, config: FieldConfig) => void;
-}
-
-/**
- * 获取全局 editor_mode 对象
- */
-function getEditorMode(): EditorMode | null {
-  return typeof window !== 'undefined' ? window.editor_mode ?? null : null;
-}
-
-/**
- * 创建双击处理函数
- *
- * 双击行为与编辑按钮点击相同，但可以根据 editor_mode.doubleClickMode 切换为添加/删除模式。
- *
- * @param options - 配置选项
- * @returns 双击处理函数
- *
- * @example
- * ```tsx
- * const handleDoubleClick = createDoubleClickHandler({
- *   getValue: (field) => getValueFromStore(field),
- *   setValue: (field, value) => updateStore(field, value),
- *   onAdd: (field) => promptAndAddItem(field),
- *   onDelete: (field) => confirmAndDeleteItem(field),
- * });
- *
- * <Table
- *   data={data}
- *   commentObj={commentObj}
- *   onDoubleClick={handleDoubleClick}
- * />
- * ```
- */
-export function createDoubleClickHandler(
-  options: DoubleClickHandlerOptions = {},
-): (field: string, type: FieldType | undefined, config: FieldConfig) => void {
-  const { onAdd, onDelete, ...editOptions } = options;
-  const editClickHandler = createEditClickHandler(editOptions);
-
-  return (field: string, type: FieldType | undefined, config: FieldConfig) => {
-    const editorMode = getEditorMode();
-    const mode = editorMode?.doubleClickMode ?? 'change';
-
-    if (mode === 'change') {
-      // 正常编辑模式：调用编辑处理函数
-      editClickHandler(field, type, config);
-    } else if (mode === 'add') {
-      // 添加模式：重置模式并调用添加回调
-      if (editorMode) {
-        editorMode.doubleClickMode = 'change';
-      }
-      onAdd?.(field, config);
-    } else if (mode === 'delete') {
-      // 删除模式：重置模式并调用删除回调
-      if (editorMode) {
-        editorMode.doubleClickMode = 'change';
-      }
-      onDelete?.(field, config);
-    }
-  };
-}

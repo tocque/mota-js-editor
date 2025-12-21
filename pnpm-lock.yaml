@@ -56,6 +56,9 @@ importers:
       tern:
         specifier: ^0.24.3
         version: 0.24.3
+      ts-pattern:
+        specifier: ^5.9.0
+        version: 5.9.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -2613,6 +2616,9 @@ packages:
     engines: {node: '>=18.12'}
     peerDependencies:
       typescript: '>=4.8.4'
+
+  ts-pattern@5.9.0:
+    resolution: {integrity: sha512-6s5V71mX8qBUmlgbrfL33xDUwO0fq48rxAu2LBE11WBeGdpCPOsXksQbZJHvHwhrd3QjUusd3mAOM5Gg0mFBLg==}
 
   tty-browserify@0.0.1:
     resolution: {integrity: sha512-C3TaO7K81YvjCgQH9Q1S3R3P3BtN3RIM8n+OvX4il1K1zgE8ZhI0op7kClgkxtutIE8hQrcrHBXvIheqKUUCxw==}
@@ -5573,6 +5579,8 @@ snapshots:
   ts-api-utils@2.1.0(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
+
+  ts-pattern@5.9.0: {}
 
   tty-browserify@0.0.1: {}
 

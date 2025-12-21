@@ -117,6 +117,9 @@ export interface TableNode {
   children?: TableNode[];
 }
 
+/** 双击模式类型 */
+export type DoubleClickMode = 'change' | 'add' | 'delete';
+
 /** Props for the main Table component */
 export interface TableProps {
   /** Data object to display/edit */
@@ -129,9 +132,14 @@ export interface TableProps {
   onAddItem?: (field: string, id: string) => void;
   /** Callback when deleting an item */
   onDeleteItem?: (field: string) => void;
-  /** Callback when edit button is clicked - for external editor integration */
-  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
-  /** Callback when row is double-clicked - for external editor integration */
+  /** Callback when edit button is clicked - for external editor integration, guid 用于外部编辑器定位 DOM 元素 */
+  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除，受控属性 */
+  doubleClickMode?: DoubleClickMode;
+  /**
+   * @deprecated 使用 doubleClickMode 代替。双击处理已内部化到 Table 组件。
+   * 此属性将在后续版本中移除。
+   */
   onDoubleClick?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
 }
 
@@ -151,10 +159,10 @@ export interface TableRowProps {
   shortComment?: string;
   /** Value change callback */
   onChange: (value: unknown) => void;
-  /** Edit button click callback */
-  onEditClick?: () => void;
-  /** Double click callback */
-  onDoubleClick?: () => void;
+  /** Edit button click callback，传递 guid 用于外部编辑器 */
+  onEditClick?: (guid: string) => void;
+  /** Double click callback，传递 guid 用于外部编辑器 */
+  onDoubleClick?: (guid: string) => void;
 }
 
 /** Props for GapRow component */

@@ -2,183 +2,124 @@
  * TowerPanel - 全塔属性编辑面板
  *
  * 使用 Table 组件渲染表格，通过 TowerDataStore 获取数据，
- * 使用 useActionList 管理修改列表，实现批量保存体验。
+ * 实现即时保存（每次修改直接调用 save）。
  */
 
-import type { FC } from 'react';
+import { useCallback, useState, type FC } from 'react';
+import { Segmented } from 'antd';
+import { LeftTab } from '../components/LeftTab';
 import {
   Table,
   createEditClickHandler,
-  createDoubleClickHandler,
 } from '@/components/Table';
+import { getByFieldPath } from '@/components/Table/utils/fieldPath';
+import { validateId } from '@/components/Table/utils/validation';
 import { TowerDataStore } from '@/stores/TowerDataStore';
-import { useActionList } from '@/hooks/useActionList';
-import { checkRange, validateId } from '@/components/Table/utils/validation';
+import type { DoubleClickMode } from '@/components/Table/types';
+import type { Action } from '@/services/tower';
 
 export const TowerPanel: FC = () => {
   // 从 Store 获取数据和保存方法
-  const { towerData, isLoading, error, save, isSaving } = TowerDataStore.useStore();
+  const { towerData, isLoading, error, save } = TowerDataStore.useStore();
 
-  // Panel 层管理自己的 actionList
-  const { actionList, hasChanges, addChange, addAdd, addDelete, clear } = useActionList();
+  // 在 Panel 层维护 doubleClickMode
+  const [doubleClickMode, setDoubleClickMode] = useState<DoubleClickMode>('change');
 
-  // 创建编辑按钮点击处理函数
-  const handleEditClick = createEditClickHandler({
-    getValue: (field) => {
-      // 从 towerData.data 中获取值
-      if (!towerData?.data) return undefined;
-      try {
-        // field 格式如 "['main']['floorIds']"，需要解析并获取值
-        const getter = new Function('data', `return data${field}`);
-        return getter(towerData.data);
-      } catch {
-        return undefined;
-      }
+  // 值变更处理 - 即时保存
+  const handleValueChange = useCallback(
+    async (field: string, value: unknown) => {
+      const action: Action = ['change', field, value];
+      await save([action]);
     },
-    setValue: (field, value) => {
-      addChange(field, value);
-    },
-  });
+    [save],
+  );
 
-  // 创建双击处理函数
-  const handleDoubleClick = createDoubleClickHandler({
-    getValue: (field) => {
-      if (!towerData?.data) return undefined;
-      try {
-        const getter = new Function('data', `return data${field}`);
-        return getter(towerData.data);
-      } catch {
-        return undefined;
-      }
-    },
-    setValue: (field, value) => {
-      addChange(field, value);
-    },
-    onAdd: (field) => {
-      // 获取父对象的现有键
+  // 添加项处理 - 即时保存
+  const handleAddItem = useCallback(
+    async (field: string, id: string) => {
+      // 验证 ID
       let existingKeys: string[] = [];
       if (towerData?.data) {
-        try {
-          const getter = new Function('data', `return data${field}`);
-          const parentObj = getter(towerData.data);
-          if (parentObj && typeof parentObj === 'object') {
-            existingKeys = Object.keys(parentObj);
-          }
-        } catch {
-          // 忽略错误
+        const parentObj = getByFieldPath(towerData.data, field);
+        if (parentObj && typeof parentObj === 'object') {
+          existingKeys = Object.keys(parentObj as Record<string, unknown>);
         }
       }
-
-      // 提示用户输入新项 ID
-      const id = prompt('请输入新项的 ID');
-      if (id == null) return;
-
-      // 验证 ID
       const validation = validateId(id, existingKeys, false);
       if (!validation.valid) {
         printe?.(validation.error || 'ID 无效');
         return;
       }
 
-      addAdd(field, id);
+      const newField = field + "['" + id + "']";
+      const action: Action = ['add', newField, null];
+      await save([action]);
+      printf?.('添加成功，刷新后生效。');
     },
-    onDelete: (field, config) => {
-      // 检查是否允许删除（null 是否在范围内）
-      if (!checkRange(config, null)) {
-        printe?.(field + ' : 该值不允许为null，无法删除');
-        return;
-      }
+    [save, towerData],
+  );
 
-      if (confirm('确定要删除吗？')) {
-        addDelete(field);
-      }
+  // 删除项处理 - 即时保存
+  const handleDeleteItem = useCallback(
+    async (field: string) => {
+      const action: Action = ['delete', field, undefined];
+      await save([action]);
+      printf?.('删除成功，刷新后生效。');
     },
+    [save],
+  );
+
+  // 创建编辑按钮点击处理函数
+  const handleEditClick = createEditClickHandler({
+    getValue: (field: string) => {
+      if (!towerData?.data) return undefined;
+      return getByFieldPath(towerData.data, field);
+    },
+    setValue: handleValueChange,
   });
-
-  // 值变更处理
-  const handleValueChange = (field: string, value: unknown) => {
-    addChange(field, value);
-  };
-
-  // 添加项处理
-  const handleAddItem = (field: string, id: string) => {
-    addAdd(field, id);
-  };
-
-  // 删除项处理
-  const handleDeleteItem = (field: string) => {
-    addDelete(field);
-  };
-
-  // 保存时传入 actionList，成功后清空
-  const handleSave = async () => {
-    if (actionList.length === 0) return;
-    try {
-      await save(actionList);
-      clear();
-    } catch {
-      // 错误已在 TowerDataStore 中处理
-    }
-  };
-
-  // 添加按钮点击处理
-  const handleAdd = () => {
-    editor?.mode?.changeDoubleClickModeByButton?.('add');
-  };
 
   // 配置表格按钮点击处理
   const handleConfigure = () => {
     editor_multi?.editCommentJs?.('tower');
   };
 
-  // 加载中状态
-  if (isLoading && !towerData) {
-    return (
-      <div id="left5" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
-        <h3 className="leftTabHeader">全塔属性</h3>
-        <div className="leftTabContent">加载中...</div>
-      </div>
-    );
-  }
-
-  // 错误状态
-  if (error) {
-    return (
-      <div id="left5" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
-        <h3 className="leftTabHeader">全塔属性</h3>
-        <div className="leftTabContent">加载失败: {String(error)}</div>
-      </div>
-    );
-  }
+  // 操作按钮区域
+  const actions = (
+    <>
+      <Segmented
+        size="small"
+        value={doubleClickMode}
+        onChange={(value) => setDoubleClickMode(value as DoubleClickMode)}
+        options={[
+          { label: '编辑', value: 'change' },
+          { label: '添加', value: 'add' },
+          { label: '删除', value: 'delete' },
+        ]}
+      />
+      &nbsp;&nbsp;
+      <button onClick={handleConfigure}>配置表格</button>
+    </>
+  );
 
   return (
-    <div id="left5" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
-      <h3 className="leftTabHeader">
-        全塔属性&nbsp;&nbsp;
-        <button onClick={handleSave} disabled={!hasChanges || isSaving}>
-          {isSaving ? '保存中...' : '保存'}
-          {hasChanges && !isSaving && ' *'}
-        </button>
-        &nbsp;&nbsp;
-        <button onClick={handleAdd}>添加</button>
-        &nbsp;&nbsp;
-        <button onClick={handleConfigure}>配置表格</button>
-      </h3>
-      <div className="leftTabContent">
-        <div className="etable">
-          {towerData && (
-            <Table
-              data={towerData.data}
-              commentObj={towerData.commentObj}
-              onValueChange={handleValueChange}
-              onAddItem={handleAddItem}
-              onDeleteItem={handleDeleteItem}
-              onEditClick={handleEditClick}
-              onDoubleClick={handleDoubleClick}
-            />
-          )}
-        </div>
-      </div>
-    </div>
+    <LeftTab
+      id="left5"
+      title="全塔属性"
+      actions={actions}
+      loading={isLoading && !towerData}
+      error={error ? String(error) : null}
+    >
+      {towerData && (
+        <Table
+          data={towerData.data}
+          commentObj={towerData.commentObj}
+          onValueChange={handleValueChange}
+          onAddItem={handleAddItem}
+          onDeleteItem={handleDeleteItem}
+          onEditClick={handleEditClick}
+          doubleClickMode={doubleClickMode}
+        />
+      )}
+    </LeftTab>
   );
 };

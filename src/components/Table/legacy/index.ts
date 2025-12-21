@@ -14,7 +14,5 @@ export {
 
 export {
   createEditClickHandler,
-  createDoubleClickHandler,
   type EditClickHandlerOptions,
-  type DoubleClickHandlerOptions,
 } from './editClickHandler';

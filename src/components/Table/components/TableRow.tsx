@@ -7,6 +7,18 @@ import {
   CheckboxInput,
   CheckboxSet,
 } from './inputs';
+import { checkRange } from '../utils/validation';
+import { generateGuid } from '@/utils/json';
+
+/**
+ * 获取全局 printe 函数
+ */
+const getPrinte = (): ((msg: string) => void) | undefined => {
+  if (typeof window !== 'undefined' && 'printe' in window) {
+    return (window as unknown as { printe: (msg: string) => void }).printe;
+  }
+  return undefined;
+};
 
 /**
  * 根据字段类型渲染对应的输入组件
@@ -114,6 +126,9 @@ export const TableRow: FC<TableRowProps> = (props) => {
 
   const type = config._type;
 
+  // 生成唯一 id，用于外部编辑器定位
+  const guid = useMemo(() => generateGuid(), []);
+
   // 生成用于 data-field 属性的值
   // "['main']['floorIds']" => "main-floorIds"
   const dataField = useMemo(
@@ -139,10 +154,10 @@ export const TableRow: FC<TableRowProps> = (props) => {
     }
   }, [comment]);
 
-  // 处理编辑按钮点击 - 调用外部传入的回调
+  // 处理编辑按钮点击 - 调用外部传入的回调，传递 guid
   const handleEditClick = useCallback(() => {
-    onEditClick?.();
-  }, [onEditClick]);
+    onEditClick?.(guid);
+  }, [onEditClick, guid]);
 
   // 处理复制按钮点击
   const handleCopyClick = useCallback(() => {
@@ -175,16 +190,27 @@ export const TableRow: FC<TableRowProps> = (props) => {
   const handleClick = useCallback(() => {
     const now = Date.now();
     if (now - lastClickRef.current < 500) {
-      // 双击触发
-      onDoubleClick?.();
+      // 双击触发，传递 guid
+      onDoubleClick?.(guid);
       lastClickRef.current = 0; // 重置，避免连续触发
     } else {
       lastClickRef.current = now;
     }
-  }, [onDoubleClick]);
+  }, [onDoubleClick, guid]);
+
+  // 包装 onChange，在调用前进行 _range 验证
+  const handleValueChange = useCallback((newValue: unknown) => {
+    // 验证 _range
+    if (!checkRange(config, newValue)) {
+      const printe = getPrinte();
+      printe?.(field + ' : 输入的值不合要求,请鼠标放置在注释上查看说明');
+      return; // 不触发 onChange
+    }
+    onChange(newValue);
+  }, [config, field, onChange]);
 
   return (
-    <tr data-field={dataField} onClick={handleClick}>
+    <tr id={guid} data-field={dataField} onClick={handleClick}>
       {/* 字段名称列 */}
       <td title={field}>{shortField}</td>
 
@@ -196,7 +222,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
       {/* 值输入列 */}
       <td>
         <div className={`etableInputDiv ${type || ''}`}>
-          {renderInput(type, value, config, onChange)}
+          {renderInput(type, value, config, handleValueChange)}
         </div>
       </td>
 

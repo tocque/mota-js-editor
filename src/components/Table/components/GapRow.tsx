@@ -47,7 +47,7 @@ export const GapRow: FC<GapRowProps> = (props) => {
       <tr data-gap={dataGap} data-field={dataField}>
         <td>----</td>
         <td>----</td>
-        <td>{shortField}</td>
+        <td>['{shortField}']</td>
         <td>
           <button
             className="editorTableFoldBtn"

@@ -1,5 +1,5 @@
 import { DataStore } from '../stores/DataStore';
-import type { FieldConfig, FieldType } from '../types';
+import type { DoubleClickMode, FieldConfig, FieldType } from '../types';
 
 /**
  * useTableCallbacks 返回类型
@@ -11,10 +11,10 @@ export interface UseTableCallbacksReturn {
   onAddItem: (field: string, id: string) => void;
   /** 删除项回调 */
   onDeleteItem: (field: string) => void;
-  /** 编辑按钮点击回调 */
-  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
-  /** 双击行回调 */
-  onDoubleClick: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
+  /** 编辑按钮点击回调，guid 用于外部编辑器定位 DOM 元素 */
+  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
+  doubleClickMode: DoubleClickMode;
 }
 
 /**
@@ -22,11 +22,11 @@ export interface UseTableCallbacksReturn {
  *
  * 从 DataStore 读取回调函数，供子组件使用。
  *
- * @returns { onValueChange, onAddItem, onDeleteItem, onEditClick, onDoubleClick }
+ * @returns { onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode }
  *
  * @example
  * ```tsx
- * const { onValueChange, onAddItem, onDeleteItem, onEditClick, onDoubleClick } = useTableCallbacks();
+ * const { onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = useTableCallbacks();
  *
  * // 修改值
  * onValueChange("['main']['floorIds']", ['floor1', 'floor2']);
@@ -38,20 +38,20 @@ export interface UseTableCallbacksReturn {
  * onDeleteItem("['enemies']['oldEnemy']");
  *
  * // 编辑按钮点击
- * onEditClick("['main']['events']", 'event', config);
+ * onEditClick("['main']['events']", 'event', config, 'guid-123');
  *
- * // 双击行
- * onDoubleClick("['main']['events']", 'event', config);
+ * // 检查双击模式
+ * if (doubleClickMode === 'change') { ... }
  * ```
  */
 export function useTableCallbacks(): UseTableCallbacksReturn {
-  const { onValueChange, onAddItem, onDeleteItem, onEditClick, onDoubleClick } = DataStore.useStore();
+  const { onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = DataStore.useStore();
 
   return {
     onValueChange,
     onAddItem,
     onDeleteItem,
     onEditClick,
-    onDoubleClick,
+    doubleClickMode,
   };
 }

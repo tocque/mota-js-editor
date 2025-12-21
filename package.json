@@ -26,7 +26,8 @@
     "lz-string": "^1.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tern": "^0.24.3"
+    "tern": "^0.24.3",
+    "ts-pattern": "^5.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

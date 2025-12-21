@@ -5,4 +5,5 @@ export {
   fetchTowerData,
   saveActions,
   type TowerData,
+  type Action,
 } from './towerDataService';

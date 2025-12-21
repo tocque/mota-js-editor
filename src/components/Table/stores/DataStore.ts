@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { createStore } from '@/utils/store/store';
 import { noop } from '@/utils/empty';
-import type { CommentObject, FieldConfig, FieldType, TableNode } from '../types';
+import type { CommentObject, DoubleClickMode, FieldConfig, FieldType, TableNode } from '../types';
 import { buildTableTree } from '../utils/traversal';
 
 /**
@@ -23,10 +23,10 @@ export interface DataStoreArgument {
   onAddItem?: (field: string, id: string) => void;
   /** 删除项回调 */
   onDeleteItem?: (field: string) => void;
-  /** 编辑按钮点击回调 - 用于外部编辑器集成 */
-  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
-  /** 双击行回调 - 用于外部编辑器集成 */
-  onDoubleClick?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
+  /** 编辑按钮点击回调 - 用于外部编辑器集成，guid 用于外部编辑器定位 DOM 元素 */
+  onEditClick?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
+  doubleClickMode?: DoubleClickMode;
 }
 
 export interface DataStoreValue {
@@ -40,14 +40,14 @@ export interface DataStoreValue {
   onAddItem: (field: string, id: string) => void;
   /** 删除项回调，供子组件使用 */
   onDeleteItem: (field: string) => void;
-  /** 编辑按钮点击回调，供子组件使用 */
-  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
-  /** 双击行回调，供子组件使用 */
-  onDoubleClick: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
+  /** 编辑按钮点击回调，供子组件使用，guid 用于外部编辑器定位 DOM 元素 */
+  onEditClick: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 双击模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
+  doubleClickMode: DoubleClickMode;
 }
 
 function useDataStore(argument: DataStoreArgument): DataStoreValue {
-  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, onDoubleClick } = argument;
+  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = argument;
 
   // 从 data 和 commentObj 构建表格树，使用 useMemo 避免重复构建
   const { rootNodes, gapFields } = useMemo(
@@ -64,7 +64,8 @@ function useDataStore(argument: DataStoreArgument): DataStoreValue {
 
   const handleEditClick = useMemo(() => onEditClick ?? noop, [onEditClick]);
 
-  const handleDoubleClick = useMemo(() => onDoubleClick ?? noop, [onDoubleClick]);
+  // 双击模式默认为 'change'
+  const mode: DoubleClickMode = doubleClickMode ?? 'change';
 
   return {
     rootNodes,
@@ -73,7 +74,7 @@ function useDataStore(argument: DataStoreArgument): DataStoreValue {
     onAddItem: handleAddItem,
     onDeleteItem: handleDeleteItem,
     onEditClick: handleEditClick,
-    onDoubleClick: handleDoubleClick,
+    doubleClickMode: mode,
   };
 }
 

@@ -5,6 +5,8 @@
  * Field paths follow the format: "['key1']['key2']['key3']"
  */
 
+import { get } from 'es-toolkit/compat';
+
 /**
  * Parse a field path string into an array of keys.
  * 
@@ -98,6 +100,39 @@ export function getParentField(field: string): string {
     return '';
   }
   return buildFieldPath(keys.slice(0, -1));
+}
+
+/**
+ * Alias for getParentField.
+ * Get the parent field path by removing the last segment.
+ * 
+ * @param fieldPath - Field path string
+ * @returns Parent field path, or empty string if no parent
+ * 
+ * @example
+ * getParentFieldPath("['main']['floorIds']") // "['main']"
+ * getParentFieldPath("['single']") // ""
+ */
+export const getParentFieldPath = getParentField;
+
+/**
+ * 根据 field path 从对象中安全获取值
+ * 使用 es-toolkit 的 get 函数，不使用 new Function 或 eval
+ * 
+ * @param obj - 数据对象
+ * @param fieldPath - 字段路径，如 "['main']['floorIds']"
+ * @returns 字段值，如果路径无效则返回 undefined
+ * 
+ * @example
+ * getByFieldPath({ main: { floorIds: [1, 2] } }, "['main']['floorIds']") // [1, 2]
+ * getByFieldPath({ a: { b: 'value' } }, "['a']['b']") // 'value'
+ * getByFieldPath({}, "['nonexistent']") // undefined
+ */
+export function getByFieldPath(obj: unknown, fieldPath: string): unknown {
+  if (!fieldPath) return obj;
+  const keys = parseFieldPath(fieldPath);
+  if (keys.length === 0) return obj;
+  return get(obj, keys);
 }
 
 /**

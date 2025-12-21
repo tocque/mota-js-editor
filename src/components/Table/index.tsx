@@ -40,8 +40,6 @@ export {
   createAddItemHandler,
   createDeleteItemHandler,
   createEditClickHandler,
-  createDoubleClickHandler,
   type ValueChangeHandlerOptions,
   type EditClickHandlerOptions,
-  type DoubleClickHandlerOptions,
 } from './legacy';

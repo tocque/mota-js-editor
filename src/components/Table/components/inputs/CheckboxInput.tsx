@@ -16,6 +16,7 @@ export const CheckboxInput: FC<CheckboxInputProps> = (props) => {
   return (
     <input
       type="checkbox"
+      className="checkbox"
       checked={value}
       onChange={handleChange}
       disabled={disabled}

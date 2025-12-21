@@ -6,7 +6,9 @@
  */
 
 import type { CommentObject } from '@/components/Table';
-import type { Action } from '@/hooks/useActionList';
+
+/** Action 类型：[操作类型, 字段路径, 值] */
+export type Action = ['change' | 'add' | 'delete', string, unknown];
 
 /** 全塔属性数据结构 */
 export interface TowerData {

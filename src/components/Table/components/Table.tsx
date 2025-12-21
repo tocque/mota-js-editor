@@ -16,36 +16,38 @@ import { TableBody } from './TableBody';
  *   data={gameData}
  *   commentObj={commentConfig}
  *   onValueChange={(field, value) => console.log(field, value)}
- *   onEditClick={(field, type, config) => openEditor(field, type, config)}
- *   onDoubleClick={(field, type, config) => openEditor(field, type, config)}
+ *   onEditClick={(field, type, config, guid) => openEditor(field, type, config, guid)}
+ *   doubleClickMode="change"
  * />
  * ```
  */
 export const Table: FC<TableProps> = (props) => {
-  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, onDoubleClick } = props;
+  const { data, commentObj, onValueChange, onAddItem, onDeleteItem, onEditClick, doubleClickMode } = props;
 
   return (
-    <FoldStore.Provider>
-      <DataStore.Provider
-        argument={{
-          data,
-          commentObj,
-          onValueChange,
-          onAddItem,
-          onDeleteItem,
-          onEditClick,
-          onDoubleClick,
-        }}
-      >
-        <table>
-          <thead>
-            <TableHeader />
-          </thead>
-          <tbody>
-            <TableBody />
-          </tbody>
-        </table>
-      </DataStore.Provider>
-    </FoldStore.Provider>
+    <div className="etable">
+      <FoldStore.Provider>
+        <DataStore.Provider
+          argument={{
+            data,
+            commentObj,
+            onValueChange,
+            onAddItem,
+            onDeleteItem,
+            onEditClick,
+            doubleClickMode,
+          }}
+        >
+          <table>
+            <thead>
+              <TableHeader />
+            </thead>
+            <tbody>
+              <TableBody />
+            </tbody>
+          </table>
+        </DataStore.Provider>
+      </FoldStore.Provider>
+    </div>
   );
 };

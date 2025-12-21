@@ -11,8 +11,7 @@
 import { createStore } from '@/utils/store/store';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TOWER_QUERY_KEY } from '@/queryClient';
-import { fetchTowerData, saveActions } from '@/services/tower';
-import type { Action } from '@/hooks/useActionList';
+import { fetchTowerData, saveActions, type Action } from '@/services/tower';
 
 const useTowerDataStore = () => {
   const queryClient = useQueryClient();
