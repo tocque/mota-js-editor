@@ -7,3 +7,8 @@ export {
   writeTowerData,
   type Action,
 } from './towerDataService';
+
+export {
+  towerService,
+  type TowerData,
+} from './towerService';

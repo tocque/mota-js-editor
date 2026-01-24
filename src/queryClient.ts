@@ -15,14 +15,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-/**
- * TowerPanel 数据的 Query Key
- */
-export const TOWER_QUERY_KEY = ['tower-data'] as const;
-
-/**
- * FloorPanel 数据的 Query Key
- * 包含 floorId 以区分不同楼层的缓存
- */
-export const FLOOR_QUERY_KEY = (floorId: string) => ['floor-data', floorId] as const;

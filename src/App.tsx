@@ -2,6 +2,7 @@ import { useEffect, type FC } from "react";
 import { setupEditor } from "./setupEditor";
 import { Workbench } from "./Workbench";
 import { EditorStore } from "./stores/EditorStore";
+import { editorHandler } from "./fs/EditorHandler";
 
 const App: FC = () => {
 
@@ -9,6 +10,7 @@ const App: FC = () => {
 
   useEffect(() => {
     setupEditor().then(() => {
+      editorHandler.markReady();
       setEditorInitialized(true);
     });
   }, []);

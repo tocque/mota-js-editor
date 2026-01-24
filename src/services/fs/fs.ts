@@ -20,6 +20,7 @@ export type VoidCallback = (err: string | null) => void;
 /** fs.promises 模块接口 */
 export interface FsPromiseApi {
   readFile(filename: string, encoding: FileEncoding): Promise<string>;
+  readFileBinary(filename: string): Promise<ArrayBuffer>;
   writeFile(filename: string, data: string, encoding: FileEncoding): Promise<void>;
   writeMultiFiles(filenames: string[], dataList: string[]): Promise<void>;
   readdir(path: string): Promise<string[]>;
@@ -43,68 +44,52 @@ export interface Fs {
 // ==================== 工具函数 ====================
 
 /**
- * 检查值是否已设置（非 undefined、null、NaN）
+ * base64 转 ArrayBuffer（兼容浏览器与 Node 环境）
  */
-function isset<T>(val: T | undefined | null): val is T {
-  if (val === undefined || val === null) {
-    return false;
+function decodeBase64ToArrayBuffer(base64: string): ArrayBuffer {
+  if (typeof atob === "function") {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
   }
-  if (typeof val === "number" && isNaN(val)) {
-    return false;
+
+  const nodeBuffer = (globalThis as { Buffer?: { from: (input: string, encoding: string) => Uint8Array } }).Buffer;
+  if (!nodeBuffer) {
+    throw new Error("Base64 decode not supported in this environment.");
   }
-  return true;
+
+  const buffer = nodeBuffer.from(base64, "base64");
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }
 
 /**
- * 发送 HTTP 请求 (使用 XMLHttpRequest 保持兼容性)
+ * 发送 HTTP 请求（fetch）
  */
-function httpRequest(
+async function httpRequest(
   type: string,
   url: string,
   formData: string | null,
-  success: ((data: string) => void) | null,
-  error: ((msg: string) => void) | null,
-  mimeType?: string,
-  responseType?: XMLHttpRequestResponseType,
-): void {
-  const xhr = new XMLHttpRequest();
-  xhr.open(type, url, true);
-  if (isset(mimeType)) {
-    xhr.overrideMimeType(mimeType);
-  }
-  if (isset(responseType)) {
-    xhr.responseType = responseType;
-  }
-  xhr.onload = function () {
-    if (xhr.status === 200) {
-      if (isset(success)) {
-        success(xhr.response as string);
-      }
-    } else {
-      if (isset(error)) {
-        error("HTTP " + xhr.status);
-      }
+): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      method: type,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      body: formData ?? undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-  };
-  xhr.onabort = function () {
-    if (isset(error)) {
-      error("Abort");
-    }
-  };
-  xhr.ontimeout = function () {
-    if (isset(error)) {
-      error("Timeout");
-    }
-  };
-  xhr.onerror = function () {
-    if (isset(error)) {
-      error("Error on Connection");
-    }
-  };
-  if (isset(formData)) {
-    xhr.send(formData);
-  } else {
-    xhr.send();
+
+    return await response.text();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`${message}：请检查启动服务是否处于正常运行状态。`);
   }
 }
 
@@ -116,27 +101,22 @@ function postData(data: string | null, endpoint: string, callback: Callback): vo
     data = JSON.stringify({ 1: 2 });
   }
 
-  httpRequest(
-    "POST",
-    endpoint,
-    data,
-    (response) => {
+  httpRequest("POST", endpoint, data)
+    .then((response) => {
       if (response.slice(0, 6) === "error:") {
         callback(response, null);
       } else {
         callback(null, response);
       }
-    },
-    (e) => {
+    })
+    .catch((err: Error) => {
       if ((window as unknown as { main: unknown }).main != null) {
-        console.log(e);
+        console.log(err.message);
       } else {
-        console.log(e);
+        console.log(err.message);
       }
-      callback(e + "：请检查启动服务是否处于正常运行状态。");
-    },
-    "text/plain; charset=x-user-defined",
-  );
+      callback(err.message);
+    });
 }
 
 // ==================== Promise API ====================
@@ -163,6 +143,12 @@ const promises: FsPromiseApi = {
     return promisify<string>((callback) => {
       fs.readFile(filename, encoding, callback);
     });
+  },
+
+  readFileBinary(filename: string): Promise<ArrayBuffer> {
+    return promisify<string>((callback) => {
+      fs.readFile(filename, "base64", callback);
+    }).then((base64) => decodeBase64ToArrayBuffer(base64));
   },
 
   writeFile(filename: string, data: string, encoding: FileEncoding): Promise<void> {
@@ -210,13 +196,17 @@ export const fs: Fs = {
       throw "Type Error in fs.readFile";
     }
     if (encoding === "utf-8") {
-      const data = "type=utf8&name=" + filename;
-      postData(data, "/readFile", callback);
+      const params = new URLSearchParams();
+      params.set("type", "utf8");
+      params.set("name", filename);
+      postData(params.toString(), "/readFile", callback);
       return;
     }
     if (encoding === "base64") {
-      const data = "type=base64&name=" + filename;
-      postData(data, "/readFile", callback);
+      const params = new URLSearchParams();
+      params.set("type", "base64");
+      params.set("name", filename);
+      postData(params.toString(), "/readFile", callback);
       return;
     }
     throw "Type Error in fs.readFile";
@@ -227,28 +217,38 @@ export const fs: Fs = {
       throw "Type Error in fs.writeFile";
     }
     if (encoding === "utf-8") {
-      const data = "type=utf8&name=" + filename + "&value=" + datastr;
-      postData(data, "/writeFile", callback);
+      const params = new URLSearchParams();
+      params.set("type", "utf8");
+      params.set("name", filename);
+      params.set("value", datastr);
+      postData(params.toString(), "/writeFile", callback);
       return;
     }
     if (encoding === "base64") {
-      const data = "type=base64&name=" + filename + "&value=" + datastr;
-      postData(data, "/writeFile", callback);
+      const params = new URLSearchParams();
+      params.set("type", "base64");
+      params.set("name", filename);
+      params.set("value", datastr);
+      postData(params.toString(), "/writeFile", callback);
       return;
     }
     throw "Type Error in fs.writeFile";
   },
 
   writeMultiFiles(filenames: string[], datastrs: string[], callback: VoidCallback): void {
-    postData("name=" + filenames.join(";") + "&value=" + datastrs.join(";"), "/writeMultiFiles", callback);
+    const params = new URLSearchParams();
+    params.set("name", filenames.join(";"));
+    params.set("value", datastrs.join(";"));
+    postData(params.toString(), "/writeMultiFiles", callback);
   },
 
   readdir(path: string, callback: Callback<string[]>): void {
     if (typeof path !== "string") {
       throw "Type Error in fs.readdir";
     }
-    const data = "name=" + path;
-    postData(data, "/listFile", (err, response) => {
+    const params = new URLSearchParams();
+    params.set("name", path);
+    postData(params.toString(), "/listFile", (err, response) => {
       let parsedData: string[] | null = null;
       try {
         parsedData = JSON.parse(response as string);
@@ -264,24 +264,28 @@ export const fs: Fs = {
     if (typeof path !== "string") {
       throw "Type Error in fs.readdir";
     }
-    const data = "name=" + path;
-    postData(data, "/makeDir", callback);
+    const params = new URLSearchParams();
+    params.set("name", path);
+    postData(params.toString(), "/makeDir", callback);
   },
 
   moveFile(src: string, dest: string, callback: VoidCallback): void {
     if (typeof src !== "string" || typeof dest !== "string") {
       throw "Type Error in fs.readdir";
     }
-    const data = "src=" + src + "&dest=" + dest;
-    postData(data, "/moveFile", callback);
+    const params = new URLSearchParams();
+    params.set("src", src);
+    params.set("dest", dest);
+    postData(params.toString(), "/moveFile", callback);
   },
 
   deleteFile(path: string, callback: VoidCallback): void {
     if (typeof path !== "string") {
       throw "Type Error in fs.readdir";
     }
-    const data = "name=" + path;
-    postData(data, "/deleteFile", callback);
+    const params = new URLSearchParams();
+    params.set("name", path);
+    postData(params.toString(), "/deleteFile", callback);
   },
 
   promises,

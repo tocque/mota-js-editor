@@ -1,4 +1,4 @@
-import { batchCreateMapFiles } from "@/fs/maps";
+import { floorService } from "@/services/floor";
 import { useGameData } from "@/stores/GameDataStore";
 import { isValidFloorId } from "@/utils/string";
 import { type FC, useState } from "react";
@@ -24,6 +24,14 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
     setNewMapsHeight(core.__SIZE__);
   });
 
+  // 应用模板，将 ${i} 替换为实际的数字
+  const applyTemplate = (template: string, i: number): string => {
+    return template.replace(/\${(.*?)}/g, (_word, value) => {
+      // eslint-disable-next-line no-eval
+      return eval(value);
+    });
+  };
+
   const createNewMaps = async () => {
     if (!newFloorIds) return;
     const from = parseInt(newMapsFrom),
@@ -36,12 +44,14 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
       printe("一次最多创建99个楼层");
       return;
     }
-    const floorIdList = [];
+
+    // 预先验证所有楼层 ID
+    const floorIdList: string[] = [];
     for (let i = from; i <= to; i++) {
-      const floorId = newFloorIds.replace(/\${(.*?)}/g, (word, value) => {
-        return eval(value);
-      });
-      const findFunc = function(id) {
+      const floorId = applyTemplate(newFloorIds, i);
+
+      // 检查是否已存在（不区分大小写）
+      const findFunc = function(id: string) {
         const re = new RegExp(floorId, "i");
         return re.test(id);
       };
@@ -49,43 +59,51 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
         printe("同名楼层已存在！(不区分大小写)");
         return;
       }
+
+      // 验证楼层名格式
       if (!isValidFloorId(floorId)) {
         printe("楼层名 " + floorId + " 不合法！请使用字母、数字、下划线，且不能以数字开头！");
         return;
       }
+
+      // 检查是否重复
       if (floorIdList.indexOf(floorId) >= 0) {
         printe("尝试重复创建楼层 " + floorId + " ！");
         return;
       }
+
       floorIdList.push(floorId);
     }
 
     const width = parseInt(newMapsWidth);
     const height = parseInt(newMapsHeight);
-    if (Number.isNaN(width) || !Number.isNaN(height) || width > 128 || height > 128) {
+    if (Number.isNaN(width) || Number.isNaN(height) || width > 128 || height > 128) {
       printe("新建地图的宽高都不得大于128");
       return;
     }
+
     editor_mode.onmode("");
 
-    await batchCreateMapFiles(floorIdList, from, to, {
-      width,
-      height,
-      saveStatus: newMapsStatus,
-      floorTitlesTemplate: newFloorTitles,
-      floorNamesTemplate: newFloorNames,
-    }).catch((err) => {
-      printe(err);
-      throw err;
-    });
-    core.floorIds = core.floorIds.concat(floorIdList);
-    editor.file.editTower([["change", "['main']['floorIds']", core.floorIds]], (objs_) => { // console.log(objs_);
-      if (objs_.slice(-1)[0] != null) {
-        printe(objs_.slice(-1)[0]);
-        throw (objs_.slice(-1)[0]);
+    try {
+      // 逐个创建楼层，应用模板生成 title 和 name
+      for (let i = from; i <= to; i++) {
+        const floorId = applyTemplate(newFloorIds, i);
+        const title = newMapsStatus ? applyTemplate(newFloorTitles, i) : floorId;
+        const name = newMapsStatus ? applyTemplate(newFloorNames, i) : floorId;
+
+        await floorService.createFloor(floorId, {
+          title,
+          name,
+          width,
+          height,
+        });
       }
+
       printe("批量创建 " + floorIdList[0] + "~" + floorIdList[floorIdList.length - 1] + " 成功,请F5刷新编辑器生效");
-    });
+    } catch (err) {
+      printe(String(err));
+      throw err;
+    }
   };
 
   return (

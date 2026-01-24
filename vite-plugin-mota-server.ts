@@ -43,8 +43,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
   // 解析路径
   async function extract(...dirs: string[]): Promise<string[]> {
     const res: string[] = [];
-    const tasks = dirs.map(v => {
-      return new Promise<void>(resolve => {
+    const tasks = dirs.map(v => new Promise<void>(resolve => {
         if (v.endsWith('/')) {
           const dir = path.join(projectRoot, 'public', v.slice(0, -1));
           fs.readdir(dir).then(files => {
@@ -69,8 +68,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           res.push(v);
           resolve();
         }
-      });
-    });
+      }));
     await Promise.all(tasks);
     return res;
   }
@@ -155,19 +153,21 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
       
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
         const handleRequest = async () => {
-          const url = req.url?.replace(`/games/${name}`, '').replace('/all/', '/') || '/';
+          const rawUrl = req.url || '/';
+          const normalizedUrl = rawUrl.replace(`/games/${name}`, '').replace('/all/', '/');
+          const parsedUrl = new URL(normalizedUrl, 'http://localhost');
+          const pathname = parsedUrl.pathname;
           
           // GET 请求处理
           if (req.method === 'GET') {
           // 处理批量楼层加载
-          if (url.startsWith('/__all_floors__.js')) {
-            const all = url.split('&id=')[1].split(',');
+          if (pathname.startsWith('/__all_floors__.js')) {
+            const ids = parsedUrl.searchParams.get('id') || '';
+            const all = ids.split(',').filter(Boolean);
             const data: Record<string, Buffer> = {};
-            const tasks = all.map((v: string) => {
-              return fs.readFile(path.join(projectRoot, `public/project/floors/${v}.js`))
-                .then(content => { data[v] = content; })
-                .catch(() => {});
-            });
+            const tasks = all.map((v: string) => fs.readFile(path.join(projectRoot, `public/project/floors/${v}.js`))
+              .then(content => { data[v] = content; })
+              .catch(() => {}));
             await Promise.all(tasks);
             const result = all.map((v: string) => data[v]).join('\n');
             res.setHeader('Content-Type', 'text/javascript');
@@ -176,14 +176,13 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 处理批量动画加载
-          if (url.startsWith('/__all_animates__')) {
-            const all = url.split('&id=')[1].split(',');
+          if (pathname.startsWith('/__all_animates__')) {
+            const ids = parsedUrl.searchParams.get('id') || '';
+            const all = ids.split(',').filter(Boolean);
             const data: Record<string, Buffer> = {};
-            const tasks = all.map((v: string) => {
-              return fs.readFile(path.join(projectRoot, `public/project/animates/${v}.animate`))
-                .then(content => { data[v] = content; })
-                .catch(() => {});
-            });
+            const tasks = all.map((v: string) => fs.readFile(path.join(projectRoot, `public/project/animates/${v}.animate`))
+              .then(content => { data[v] = content; })
+              .catch(() => {}));
             await Promise.all(tasks);
             const result = all.map((v: string) => data[v]).join('@@@~~~###~~~@@@');
             res.end(result);
@@ -194,9 +193,11 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
         // POST 请求处理
         if (req.method === 'POST') {
           // 列出目录
-          if (url === '/listFile') {
+          if (pathname === '/listFile') {
             const data = await getPostData(req);
-            const dir = path.join(projectRoot, 'public', data.toString().slice(5));
+            const params = new URLSearchParams(data);
+            const name = params.get('name') || '';
+            const dir = path.join(projectRoot, 'public', name);
             try {
               const info = await fs.readdir(dir);
               res.end(JSON.stringify(info));
@@ -207,9 +208,11 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 创建目录
-          if (url === '/makeDir') {
+          if (pathname === '/makeDir') {
             const data = await getPostData(req);
-            const dir = path.join(projectRoot, 'public', data.toString().slice(5));
+            const params = new URLSearchParams(data);
+            const name = params.get('name') || '';
+            const dir = path.join(projectRoot, 'public', name);
             try {
               await fs.mkdir(dir, { recursive: true });
             } catch {
@@ -220,12 +223,15 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 读取文件
-          if (url === '/readFile') {
+          if (pathname === '/readFile') {
             const data = await getPostData(req);
-            const dir = path.join(projectRoot, 'public', data.split('&name=')[1]);
+            const params = new URLSearchParams(data);
+            const name = params.get('name') || '';
+            const dir = path.join(projectRoot, 'public', name);
             try {
-              const type = /^type=(utf8|base64)/.exec(data)![0];
-              const encoding = type.slice(5) as 'utf8' | 'base64';
+              const type = params.get('type') || 'utf8';
+              const encoding = type === 'base64' ? 'base64' : 'utf8';
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
               const info = await fs.readFile(dir, { encoding });
               res.end(info);
             } catch {
@@ -235,13 +241,14 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 写入文件
-          if (url === '/writeFile') {
+          if (pathname === '/writeFile') {
             const data = await getPostData(req);
-            const name = data.split('&name=')[1].split('&value=')[0];
+            const params = new URLSearchParams(data);
+            const name = params.get('name') || '';
             const dir = path.join(projectRoot, 'public', name);
             try {
-              const type = /^type=(utf8|base64)/.exec(data)![0].slice(5) as 'utf8' | 'base64';
-              const value = /&value=[^]+/.exec(data)![0].slice(7);
+              const type = params.get('type') === 'base64' ? 'base64' : 'utf8';
+              const value = params.get('value') || '';
               await fs.writeFile(dir, value, { encoding: type });
               testWatchFloor(name);
             } catch {
@@ -252,9 +259,11 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 删除文件
-          if (url === '/deleteFile') {
+          if (pathname === '/deleteFile') {
             const data = await getPostData(req);
-            const dir = path.join(projectRoot, 'public', data.slice(5));
+            const params = new URLSearchParams(data);
+            const name = params.get('name') || '';
+            const dir = path.join(projectRoot, 'public', name);
             try {
               await fs.rm(dir);
             } catch {
@@ -265,11 +274,13 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 移动文件
-          if (url === '/moveFile') {
+          if (pathname === '/moveFile') {
             const data = await getPostData(req);
-            const info = data.split('&dest=');
-            const src = path.join(projectRoot, 'public', info[0].slice(4));
-            const dest = path.join(projectRoot, 'public', info[1]);
+            const params = new URLSearchParams(data);
+            const srcName = params.get('src') || '';
+            const destName = params.get('dest') || '';
+            const src = path.join(projectRoot, 'public', srcName);
+            const dest = path.join(projectRoot, 'public', destName);
             try {
               const fileData = await fs.readFile(src);
               await fs.writeFile(dest, fileData);
@@ -282,21 +293,20 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 批量写入文件
-          if (url === '/writeMultiFiles') {
+          if (pathname === '/writeMultiFiles') {
             const data = await getPostData(req);
-            const names = /name=[^]+&value=/.exec(data)![0].slice(5, -7).split(';');
-            const values = /&value=[^]+/.exec(data)![0].slice(7).split(';');
-            const tasks = names.map((v, i) => {
-              return fs.writeFile(path.join(projectRoot, 'public', v), values[i], 'base64')
-                .then(() => testWatchFloor(v));
-            });
+            const params = new URLSearchParams(data);
+            const names = (params.get('name') || '').split(';').filter(Boolean);
+            const values = (params.get('value') || '').split(';');
+            const tasks = names.map((v, i) => fs.writeFile(path.join(projectRoot, 'public', v), values[i], 'base64')
+              .then(() => testWatchFloor(v)));
             await Promise.all(tasks);
             res.end();
             return;
           }
 
           // 重新加载
-          if (url === '/reload') {
+          if (pathname === '/reload') {
             const data = await getPostData(req);
             if (data === 'test' && !watched) {
               watch();
@@ -309,7 +319,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 热重载
-          if (url === '/hotReload') {
+          if (pathname === '/hotReload') {
             const data = await getPostData(req);
             if (data === 'test' && !watched) {
               watch();
@@ -322,7 +332,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 录像调试初始化
-          if (url === '/replay') {
+          if (pathname === '/replay') {
             const data = await getPostData(req);
             if (data === 'test' && !replayed) {
               replayed = true;
@@ -348,7 +358,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 录像写入
-          if (url === '/replayWrite') {
+          if (pathname === '/replayWrite') {
             const data = await getPostData(req);
             const n = ++repStart;
             const replayDir = path.join(projectRoot, '_replay');
@@ -361,7 +371,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 录像检查
-          if (url === '/replayCheck') {
+          if (pathname === '/replayCheck') {
             const ans = await getPostData(req);
             const [n, data] = ans.split('@-|-@');
             const replayDir = path.join(projectRoot, '_replay');
@@ -399,7 +409,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 获取录像状态
-          if (url === '/replayGet') {
+          if (pathname === '/replayGet') {
             const ans = Number(await getPostData(req));
             const replayDir = path.join(projectRoot, '_replay');
             const data = await fs.readFile(path.join(replayDir, 'status', `${ans}.rep`));
@@ -408,7 +418,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 保存录像存档
-          if (url === '/replaySave') {
+          if (pathname === '/replaySave') {
             const data = await getPostData(req);
             const [cnt, save] = data.split('@-|-@');
             if (isNaN(Number(cnt))) {
@@ -422,7 +432,7 @@ export default function motaServerPlugin(options: MotaServerPluginOptions = {}):
           }
 
           // 获取录像存档
-          if (url === '/replayGetSave') {
+          if (pathname === '/replayGetSave') {
             const ans = Number(await getPostData(req));
             const replayDir = path.join(projectRoot, '_replay');
             const data = await fs.readFile(path.join(replayDir, 'save', `${ans}.rep`));

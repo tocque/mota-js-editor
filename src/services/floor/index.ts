@@ -3,8 +3,16 @@
  */
 
 export {
-  fetchFloorData,
-  saveActions,
-  saveFloorWithNewId,
+  floorService,
+  formatMap,
   type Action,
-} from './floorDataService';
+  type CreateFloorOptions,
+  type BatchSaveChange,
+} from './floorService';
+
+export {
+  setupCoreFloorsSync,
+  addFloorSync,
+  removeFloorSync,
+  stopCoreFloorsSync,
+} from './coreFloorsSync';

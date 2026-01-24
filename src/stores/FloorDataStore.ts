@@ -2,18 +2,18 @@
  * FloorDataStore - 楼层属性数据 Store
  *
  * 纯数据层，负责：
- * - 使用 useQuery 获取楼层数据（通过 floorId 参数）
- * - 使用 useFloorTableMeta 获取 commentObj
- * - 使用 useMutation 实现保存（接收外部传入的 actionList）
+ * - 使用 useFloorData 获取楼层数据（基于 signal）
+ * - 使用 useTableMeta 获取 commentObj
+ * - 使用 floorService.saveFloor 实现保存
  *
- * 与 TowerDataStore 不同，FloorDataStore 通过 floorId 参数显式指定操作对象，
- * 不同楼层的数据独立缓存。
+ * 与 TowerDataStore 不同，FloorDataStore 通过 floorId 参数显式指定操作对象。
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FLOOR_QUERY_KEY } from '@/queryClient';
-import { fetchFloorData, saveActions, type Action } from '@/services/floor';
-import { useFloorTableMeta } from '@/services/tableMeta';
+import { useMemo, useCallback, useState } from 'react';
+import { useFloorData } from '@/hooks/useFloor';
+import { useTableMeta } from '@/hooks/useTableMeta';
+import { floorService, type Action } from '@/services/floor';
+import { ContentUtils } from '@/fs/ContentUtils';
 import type { CommentObject } from '@/components/Table';
 
 interface UseFloorDataStoreProps {
@@ -43,42 +43,62 @@ interface UseFloorDataStoreResult {
  */
 export function useFloorDataStore(props: UseFloorDataStoreProps): UseFloorDataStoreResult {
   const { floorId } = props;
-  const queryClient = useQueryClient();
 
-  // 从 useFloorTableMeta 获取 commentObj
-  const metaQuery = useFloorTableMeta();
-  const floorMeta = metaQuery.meta;
+  // 保存状态
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Query: 获取楼层数据
-  const dataQuery = useQuery({
-    queryKey: FLOOR_QUERY_KEY(floorId),
-    queryFn: () => {
-      if (!floorMeta) {
-        throw new Error('楼层元数据未加载');
-      }
-      return fetchFloorData(floorId, floorMeta);
-    },
-    enabled: !!floorMeta && !!floorId,
-  });
+  // 使用新的 useFloorData hook 获取楼层数据
+  const [floorContent] = useFloorData(floorId);
 
-  // Mutation: 保存修改（接收外部传入的 actionList）
-  const saveMutation = useMutation({
-    mutationFn: (actionList: Action[]) => saveActions(floorId, actionList),
-    onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: FLOOR_QUERY_KEY(floorId) });
+  // 使用 useTableMeta 获取 comment.js 完整元数据
+  const metaContent = useTableMeta('comment');
+
+  // 从 metaContent 中提取 floors 子对象
+  const floorMeta = useMemo(() => {
+    if (!ContentUtils.isLoaded(metaContent)) return undefined;
+    // 提取 floors 对象（包含 floor 和 loc 两个子对象）
+    const floors = metaContent.value._data?.floors as CommentObject | undefined;
+    // 返回 floors._data.floor（楼层属性的元数据）
+    return floors?._data?.floor as CommentObject | undefined;
+  }, [metaContent]);
+
+  // 计算数据和状态
+  const data = useMemo(() => {
+    if (!ContentUtils.isLoaded(floorContent)) return undefined;
+    return floorContent.value as unknown as Record<string, unknown>;
+  }, [floorContent]);
+
+  const isLoading = ContentUtils.isLoading(floorContent) || ContentUtils.isLoading(metaContent);
+
+  const error = useMemo(() => {
+    if (ContentUtils.isError(floorContent)) return floorContent.error;
+    if (ContentUtils.isError(metaContent)) return metaContent.error;
+    return null;
+  }, [floorContent, metaContent]);
+
+  // 保存方法 - 使用 floorService.saveFloor
+  const save = useCallback(async (actionList: Action[]) => {
+    if (actionList.length === 0) return;
+
+    setIsSaving(true);
+    try {
+      // 同步更新内存 + 异步落盘
+      floorService.saveFloor(floorId, actionList);
       printf?.('保存成功！');
-    },
-    onError: (err) => {
+    } catch (err) {
       printe?.(String(err));
-    },
-  });
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [floorId]);
 
   return {
-    data: dataQuery.data,
+    data,
     commentObj: floorMeta,
-    isLoading: dataQuery.isLoading || metaQuery.isLoading,
-    error: dataQuery.error || metaQuery.error,
-    save: (actionList: Action[]) => saveMutation.mutateAsync(actionList),
-    isSaving: saveMutation.isPending,
+    isLoading,
+    error,
+    save,
+    isSaving,
   };
 }

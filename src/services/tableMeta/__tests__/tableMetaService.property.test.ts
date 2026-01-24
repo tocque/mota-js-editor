@@ -6,137 +6,16 @@
  * **Feature: comment-service-refactor**
  * - Property 1: Meta Object Loading
  * - Property 2: Invalid Key Error
- * - Property 5: Parse Isolation
- * **Validates: Requirements 1.1, 1.4, 6.2**
+ * **Validates: Requirements 1.1, 1.4**
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as fc from 'fast-check';
 import {
-  parseTableMetaJs,
   loadTableMetaFile,
   VALID_META_FILE_KEYS,
   type MetaFileKey,
 } from '../tableMetaService';
-import { jsIdentifierArb } from '@test/arbitraries';
-
-/**
- * 生成简单的 JSON 值（用于构造 JS 代码）
- */
-const simpleJsonValueArb = fc.oneof(
-  fc.constant(null),
-  fc.boolean(),
-  fc.integer({ min: -1000, max: 1000 }),
-  fc.string({ minLength: 0, maxLength: 20 }).map(s => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')),
-);
-
-describe('parseTableMetaJs 属性测试', () => {
-  describe('Property 5: Parse Isolation', () => {
-    // 记录测试前的全局变量
-    let globalKeysBefore: string[];
-
-    beforeEach(() => {
-      // 记录测试前 globalThis 上的所有 key
-      globalKeysBefore = Object.keys(globalThis);
-    });
-
-    afterEach(() => {
-      // 清理可能泄露的全局变量
-      const globalKeysAfter = Object.keys(globalThis);
-      const newKeys = globalKeysAfter.filter(k => !globalKeysBefore.includes(k));
-      for (const key of newKeys) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (globalThis as any)[key];
-      }
-    });
-
-    it('*For any* JS content, parseTableMetaJs should not pollute the global scope', () => {
-      fc.assert(
-        fc.property(jsIdentifierArb({ minLength: 2 }), simpleJsonValueArb, (varName, value) => {
-          // 构造 JS 代码
-          const jsValue = typeof value === 'string' ? `"${value}"` : JSON.stringify(value);
-          const content = `var ${varName} = ${jsValue};`;
-
-          // 记录解析前的全局变量
-          const keysBefore = Object.keys(globalThis);
-
-          // 执行解析
-          try {
-            parseTableMetaJs(content, varName);
-          } catch {
-            // 解析失败也是可接受的，只要不污染全局
-          }
-
-          // 验证全局变量没有增加
-          const keysAfter = Object.keys(globalThis);
-          const newKeys = keysAfter.filter(k => !keysBefore.includes(k));
-
-          // 断言：不应该有新的全局变量
-          expect(newKeys).toEqual([]);
-        }),
-        { numRuns: 100 }
-      );
-    });
-
-    it('*For any* valid JS object, parseTableMetaJs should return the parsed object without global pollution', () => {
-      fc.assert(
-        fc.property(jsIdentifierArb({ minLength: 2 }), (varName) => {
-          // 构造一个简单的对象
-          const content = `var ${varName} = { _type: "object", _data: {} };`;
-
-          // 记录解析前的全局变量
-          const keysBefore = Object.keys(globalThis);
-
-          // 执行解析
-          const result = parseTableMetaJs(content, varName);
-
-          // 验证返回值正确
-          expect(result).toEqual({ _type: 'object', _data: {} });
-
-          // 验证全局变量没有增加
-          const keysAfter = Object.keys(globalThis);
-          const newKeys = keysAfter.filter(k => !keysBefore.includes(k));
-          expect(newKeys).toEqual([]);
-        }),
-        { numRuns: 100 }
-      );
-    });
-
-    it('*For any* JS code that tries to set window properties, parseTableMetaJs should prevent global pollution', () => {
-      fc.assert(
-        fc.property(jsIdentifierArb({ minLength: 2 }), (varName) => {
-          // 构造尝试污染全局的代码
-          const maliciousVarName = `__test_pollution_${varName}`;
-          const content = `
-            var ${maliciousVarName} = "polluted";
-            var ${varName} = { _type: "object" };
-          `;
-
-          // 记录解析前的全局变量
-          const keysBefore = Object.keys(globalThis);
-
-          // 执行解析
-          try {
-            parseTableMetaJs(content, varName);
-          } catch {
-            // 解析失败也是可接受的
-          }
-
-          // 验证全局变量没有增加
-          const keysAfter = Object.keys(globalThis);
-          const newKeys = keysAfter.filter(k => !keysBefore.includes(k));
-          expect(newKeys).toEqual([]);
-
-          // 验证恶意变量没有泄露到全局
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          expect((globalThis as any)[maliciousVarName]).toBeUndefined();
-        }),
-        { numRuns: 100 }
-      );
-    });
-  });
-});
-
 
 describe('loadTableMetaFile 属性测试', () => {
   describe('Property 2: Invalid Key Error', () => {

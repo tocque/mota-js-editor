@@ -15,9 +15,7 @@ import { Table, EditModeSegmented } from '@/components/Table';
 import { useTableMetaEditor } from '@/components/Table/hooks';
 import { useFloorDataStore } from '@/stores/FloorDataStore';
 import { useCurrentFloorId, setCurrentFloorId } from '@/stores/editorState';
-import { saveFloorWithNewId } from '@/services/floor';
-import { saveActions as saveTowerActions } from '@/services/tower';
-import { queryClient, FLOOR_QUERY_KEY } from '@/queryClient';
+import { floorService } from '@/services/floor';
 import { isValidFloorId } from '@/utils/string';
 import type { EditMode, TableAction } from '@/components/Table/types';
 import type { FloorData } from '@/types';
@@ -98,34 +96,20 @@ export const FloorPanel: FC = () => {
     }
 
     try {
-      // 1. 保存新文件
-      await saveFloorWithNewId(currentFloorId, newFloorId);
+      // 1. 调用 floorService.renameFloor（处理文件和 floorIds）
+      await floorService.renameFloor(currentFloorId, newFloorId);
 
-      // 2. 更新全塔属性中的 floorIds
-      const newFloorIds = [...core.floorIds];
-      const index = newFloorIds.indexOf(currentFloorId);
-      if (index >= 0) {
-        newFloorIds[index] = newFloorId;
-      }
-      await saveTowerActions([
-        ['change', "['main']['floorIds']", newFloorIds],
-      ]);
-
-      // 3. 更新内存状态（全局状态）
+      // 2. 更新 legacy 内存状态
       const legacyEditor = editor as unknown as LegacyEditor;
-      core.floorIds[index] = newFloorId;
       legacyEditor.currentFloorId = newFloorId;
       legacyEditor.currentFloorData.floorId = newFloorId;
 
-      // 4. 更新 core.floors 引用
+      // 3. 更新 core.floors 引用
       core.floors[newFloorId] = core.floors[currentFloorId];
       delete core.floors[currentFloorId];
 
-      // 5. 更新 TanStack Store 状态
+      // 4. 更新 TanStack Store 状态
       setCurrentFloorId(newFloorId);
-
-      // 6. 刷新 React Query 缓存
-      queryClient.invalidateQueries({ queryKey: FLOOR_QUERY_KEY(newFloorId) });
 
       printf('修改 floorId 成功！');
       setFloorIdValue('');

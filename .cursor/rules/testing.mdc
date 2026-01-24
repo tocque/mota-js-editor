@@ -1,0 +1,62 @@
+---
+description: 单元测试指南 - 测试路径别名和测试编写规范
+globs: **/*.test.{ts,tsx}
+alwaysApply: false
+---
+
+# 单元测试指南
+
+## 执行方式
+
+`pnpm run test`
+
+## 路径别名
+
+测试文件中引用测试工具时，使用 `@test/*` 路径别名：
+
+```typescript
+// ✅ 正确：使用 @test 别名
+import { MemoryFileSystem } from "@test/utils/MemoryFileSystem";
+import { wait } from "@test/utils/testHelpers";
+
+// ❌ 错误：使用相对路径
+import { MemoryFileSystem } from "../../../test/utils/MemoryFileSystem";
+```
+
+## 不要编写
+
+- 针对常量的测试
+- 针对接口/类型定义的测试
+- 只验证 mock 被调用的测试
+- 测试语言基础特性的测试
+- 没有实际被测代码的测试
+
+## 应该编写
+
+- 函数的实际行为和边界情况
+- 复杂业务逻辑的正确性
+- 错误处理和异常情况
+- 异步操作的正确性
+
+```typescript
+// ✅ 好的测试：测试实际行为
+it('should queue concurrent writes to the same file', async () => {
+  const handler = fileHandlerManager.get('/test.js');
+  const results: number[] = [];
+  
+  await Promise.all([
+    handler.update(() => '1').then(() => results.push(1)),
+    handler.update(() => '2').then(() => results.push(2)),
+    handler.update(() => '3').then(() => results.push(3)),
+  ]);
+  
+  expect(results).toEqual([1, 2, 3]); // 验证顺序性
+});
+
+// ❌ 不好的测试：只验证 mock 被调用
+it('should call update', () => {
+  const mockUpdate = vi.fn();
+  myFunction(mockUpdate);
+  expect(mockUpdate).toHaveBeenCalled();
+});
+```

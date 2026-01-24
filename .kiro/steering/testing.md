@@ -4,6 +4,19 @@
 
 `pnpm run test`
 
+## 路径别名
+
+测试文件中引用测试工具时，使用 `@test/*` 路径别名：
+
+```typescript
+// ✅ 正确：使用 @test 别名
+import { MemoryFileSystem } from "@test/utils/MemoryFileSystem";
+import { wait } from "@test/utils/testHelpers";
+
+// ❌ 错误：使用相对路径
+import { MemoryFileSystem } from "../../../test/utils/MemoryFileSystem";
+```
+
 ## 不要编写
 
 - 针对常量的测试

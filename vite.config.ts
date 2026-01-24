@@ -34,4 +34,8 @@ export default defineConfig({
     // 确保所有资源都被正确复制
     copyPublicDir: true,
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+  },
 });

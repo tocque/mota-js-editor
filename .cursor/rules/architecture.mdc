@@ -1,0 +1,81 @@
+---
+description: 项目架构指南 - 三层架构和依赖规则
+alwaysApply: true
+---
+
+# 项目架构
+
+## 分层架构
+
+项目采用 `fs -> services -> ui` 三层架构：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        UI Layer                              │
+│  src/Workbench/    - 面板组件                                │
+│  src/stores/       - React 状态管理（React Query + hooks）   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Services Layer                           │
+│  src/services/     - 业务逻辑、数据转换、并发控制            │
+│  - floor/          - 楼层数据服务                            │
+│  - tower/          - 全塔属性服务                            │
+│  - tableMeta/      - 表格元数据服务                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                        FS Layer                              │
+│  src/fs/           - 基础文件读写，无业务逻辑                │
+│  - fs.ts           - 文件系统操作                            │
+│  - tableMeta.ts    - 表格元数据文件读写                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 层级职责
+
+### FS Layer (`src/fs/`)
+
+- 纯文件操作，不包含业务逻辑
+- 提供文件读写、目录操作等基础能力
+- 可包含简单的文件缓存
+- 不依赖 React
+
+### Services Layer (`src/services/`)
+
+- 封装业务逻辑和数据转换
+- 处理并发控制（如 writeExecutor）
+- 调用 fs 层进行文件操作
+- 不依赖 React（纯函数）
+
+### UI Layer (`src/Workbench/`, `src/stores/`)
+
+- React 组件和状态管理
+- 使用 React Query 管理数据获取和缓存
+- 调用 services 层进行业务操作
+- 处理用户交互
+
+## 依赖规则
+
+- UI 层可以依赖 Services 层和 FS 层
+- Services 层可以依赖 FS 层
+- FS 层不依赖其他层
+
+```typescript
+// ✅ 正确：UI 层调用 Services 层
+import { floorService } from '@/services/floor';
+
+// ✅ 正确：Services 层调用 FS 层
+import { readFile } from '@/fs';
+
+// ❌ 错误：FS 层依赖 Services 层
+import { floorService } from '@/services/floor'; // 在 src/fs/ 中
+```
+
+## 状态管理
+
+- **全局变量** - `core.floors`, `core.floorIds` 等（遗留，逐步迁移）
+- **React Query** - UI 层数据缓存
+- **FS 缓存** - 文件内容缓存（简单 Map）

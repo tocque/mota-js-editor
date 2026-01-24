@@ -1,5 +1,6 @@
-import { createMapFile } from "@/fs/maps";
+import { floorService } from "@/services/floor";
 import { useGameData } from "@/stores/GameDataStore";
+import { isValidFloorId } from "@/utils/string";
 import { type FC, useRef, useState } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
 
@@ -135,25 +136,26 @@ export const MapPanel: FC = () => {
     editor.updateMap();
   };
 
-  const deleteMap = () => {
+  // 使用 floorService.deleteFloor 删除地图
+  const deleteMap = async () => {
     if (!confirm("你确定要删除此地图么？此过程不可逆！")) return;
     editor_mode.onmode("");
-    const index = core.floorIds.indexOf(editor.currentFloorId);
-    if (index >= 0) {
-      core.floorIds.splice(index, 1);
-      editor.file.editTower([["change", "['main']['floorIds']", core.floorIds]], (objs_) => { // console.log(objs_);
-        if (objs_.slice(-1)[0] != null) {
-          printe(objs_.slice(-1)[0]);
-          throw (objs_.slice(-1)[0]);
-        }
-        printe("删除成功,请F5刷新编辑器生效");
-      });
-    } else printe("删除成功,请F5刷新编辑器生效");
+
+    try {
+      await floorService.deleteFloor(editor.currentFloorId);
+      printe("删除成功,请F5刷新编辑器生效");
+    } catch (err) {
+      printe(String(err));
+      throw err;
+    }
   };
 
+  // 使用 floorService.createFloor 创建新地图
   const createNewMap = async () => {
     if (!newFileName) return;
-    const findFunc = function(id) {
+
+    // 检查是否已存在（不区分大小写）
+    const findFunc = function(id: string) {
       const re = new RegExp(newFileName, "i");
       return re.test(id);
     };
@@ -161,10 +163,13 @@ export const MapPanel: FC = () => {
       printe("同名楼层已存在！(不区分大小写)");
       return;
     }
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newFileName)) {
+
+    // 验证楼层名格式
+    if (!isValidFloorId(newFileName)) {
       printe("楼层名不合法！请使用字母、数字、下划线，且不能以数字开头！");
       return;
     }
+
     const width = parseInt(newMapWidth);
     const height = parseInt(newMapHeight);
     if (Number.isNaN(width) || Number.isNaN(height) || width > 128 || height > 128) {
@@ -173,25 +178,21 @@ export const MapPanel: FC = () => {
     }
 
     editor_mode.onmode("");
-    await createMapFile(newFileName, {
-      width,
-      height,
-      saveStatus: newMapStatus,
-    }).catch((err) => {
-      if (err) {
-        printe(err);
-        throw err;
-      }
-    });
-    core.floorIds.push(newFileName);
-    editor.file.editTower([["change", "['main']['floorIds']", core.floorIds]], (objs_) => {
-      // console.log(objs_);
-      if (objs_.slice(-1)[0] != null) {
-        printe(objs_.slice(-1)[0]);
-        throw (objs_.slice(-1)[0]);
-      }
+
+    try {
+      // 使用 floorService.createFloor 创建楼层
+      // 它会自动创建文件并更新 floorIds
+      await floorService.createFloor(newFileName, {
+        title: newMapStatus ? undefined : newFileName, // saveStatus=true 时保留默认标题
+        name: newMapStatus ? undefined : newFileName,
+        width,
+        height,
+      });
       printe("新建成功,请F5刷新编辑器生效");
-    });
+    } catch (err) {
+      printe(String(err));
+      throw err;
+    }
   };
 
   const toggleBatchCreateMapsForm = () => {

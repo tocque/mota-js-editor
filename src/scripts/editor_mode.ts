@@ -1,4 +1,3 @@
-import { queryClient, TOWER_QUERY_KEY, FLOOR_QUERY_KEY } from '@/queryClient';
 import { setCurrentFloorId } from '@/stores/editorState';
 
 export const editor_mode = function (editor) {
@@ -294,15 +293,10 @@ export const editor_mode = function (editor) {
         // 更新 TanStack Store 状态
         setCurrentFloorId(floorId);
 
-        // 使用 React Query 刷新 FloorPanel 数据
-        queryClient.refetchQueries({ queryKey: FLOOR_QUERY_KEY(floorId) });
-
         if (Boolean(callback)) callback();
     }
 
     editor_mode.prototype.tower = function (callback) {
-        // 使用 React Query 立即刷新 TowerPanel 数据
-        queryClient.refetchQueries({ queryKey: TOWER_QUERY_KEY });
         if (Boolean(callback)) callback();
     }
 

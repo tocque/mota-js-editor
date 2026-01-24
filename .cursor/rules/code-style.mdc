@@ -1,0 +1,58 @@
+---
+description: 代码风格指南 - 注释、导入路径、类型声明、React 组件规范
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 代码风格指南
+
+## 注释
+
+请使用中文
+
+## 导入路径
+
+- 跨模块导入使用 `@` 绝对路径：`import { x } from '@/utils/xxx'`
+- 同模块内可用相对路径：`./DataStore`、`../types`
+
+```typescript
+// ✅ 正确：跨模块使用 @ 别名
+import { formatMap } from '@/utils/string';
+import type { FloorData } from '@/services/floor/types';
+
+// ✅ 正确：同模块内使用相对路径
+import { DataStore } from './DataStore';
+import { types } from '../types';
+```
+
+## 类型声明
+
+- 全局变量类型集中在 `src/vite-env.d.ts`
+- 优先使用 `@types/xxx` 包
+- 类型从源模块导入：`import type { Xxx } from "@/path/to/module"`
+
+```typescript
+// ✅ 正确：使用 type 导入
+import type { FloorData } from '@/services/floor/types';
+
+// ❌ 错误：使用值导入类型
+import { FloorData } from '@/services/floor/types';
+```
+
+## React 组件
+
+- 使用 `const XX: FC<Props> = (props) => {}` 声明组件
+- props 在函数体内解构：`const { ... } = props;`
+
+```typescript
+// ✅ 正确
+const MyComponent: FC<Props> = (props) => {
+  const { title, onClick } = props;
+  return <div>{title}</div>;
+};
+
+// ❌ 错误：在参数中解构
+const MyComponent: FC<Props> = ({ title, onClick }) => {
+  return <div>{title}</div>;
+};
+```
