@@ -47,6 +47,25 @@ declare global {
   /** 数据注释（使用 UUID 命名以避免冲突） */
   const data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc: DataCommentType;
 
+  /** 全塔属性数据（使用 UUID 命名以避免冲突） */
+  const data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d: Record<string, unknown>;
+
+  /** 怪物数据（使用 UUID 命名以避免冲突） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80: Record<string, any>;
+
+  /** 道具数据（使用 UUID 命名以避免冲突） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a: Record<string, any>;
+
+  /** 地图块数据（使用 UUID 命名以避免冲突） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maps_90f36752_8815_4be8_b32b_d7fad1d0542e: Record<string, any>;
+
+  /** 注释数据（使用 UUID 命名以避免冲突） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const comment_c456ea59_6018_45ef_8bcc_211a24c627dc: { _data: Record<string, any> };
+
   /** Tern 定义数组（使用 UUID 命名以避免冲突） */
   const terndefs_f6783a0a_522d_417e_8407_94c67b692e50: Tern.Def[];
 

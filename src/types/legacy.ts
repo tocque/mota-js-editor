@@ -94,6 +94,35 @@ export interface Editor {
   currentFloorId: string;
   /** 是否使用压缩文件，true 表示使用，'alerted' 表示已提醒 */
   useCompress?: boolean | 'alerted';
+  /** 文件操作 */
+  file?: {
+    changeIdAndIdnum: (
+      id: string,
+      idnum: number | null,
+      info: unknown,
+      callback: (err: string | null) => void
+    ) => void;
+    autoRegister: (info: unknown, callback: (err: string | null) => void) => void;
+    removeMaterial: (info: unknown, callback: (err: string | null) => void) => void;
+    saveSetting: (
+      type: string,
+      actions: unknown[],
+      callback: (err: string | null) => void
+    ) => void;
+  };
+  /** UI 函数 */
+  uifunctions?: {
+    appendMaterialByInfo: (info: unknown) => void;
+    showTips: () => void;
+  };
+  /** UI 值 */
+  uivalues?: {
+    copyEnemyItem: {
+      type: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: any;
+    };
+  };
 }
 
 // ============== Editor Mode ==============

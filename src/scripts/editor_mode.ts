@@ -1,4 +1,5 @@
 import { setCurrentFloorId } from '@/stores/editorState';
+import { setCurrentPrefabInfo } from '@/stores/prefabState';
 
 export const editor_mode = function (editor) {
     var core = editor.core;
@@ -243,46 +244,15 @@ export const editor_mode = function (editor) {
     }
 
     editor_mode.prototype.enemyitem = function (callback) {
-        //editor.info=editor.ids[editor.indexs[201]];
         if (!core.isset(editor.info)) return;
 
-        if (Object.keys(editor.info).length !== 0 && editor.info.idnum != 17) editor_mode.info = editor.info;//避免editor.info被清空导致无法获得是物品还是怪物
-
-        if (!core.isset(editor_mode.info.id)) {
-            // document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML = '';
-            document.getElementById('newIdIdnum').style.display = 'block';
-            document.getElementById('enemyItemTable').style.display = 'none';
-            document.getElementById('changeId').style.display = 'none';
-            return;
+        // 避免 editor.info 被清空导致无法获得是物品还是怪物
+        if (Object.keys(editor.info).length !== 0 && editor.info.idnum != 17) {
+            editor_mode.info = editor.info;
         }
 
-        document.getElementById('newIdIdnum').style.display = 'none';
-        document.getElementById('enemyItemTable').style.display = 'block';
-        document.getElementById('changeId').style.display = 'block';
-
-        var objs = [];
-        if (editor_mode.info.images == 'enemys' || editor_mode.info.images == 'enemy48') {
-            editor.file.editEnemy(editor_mode.info.id, [], function (objs_) {
-                objs = objs_;
-                //console.log(objs_)
-            });
-        } else if (editor_mode.info.images == 'items') {
-            editor.file.editItem(editor_mode.info.id, [], function (objs_) {
-                objs = objs_;
-                //console.log(objs_)
-            });
-        } else {
-            /* document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML='';
-            return; */
-            editor.file.editMapBlocksInfo(editor_mode.info.idnum, [], function (objs_) {
-                objs = objs_;
-                //console.log(objs_)
-            });
-        }
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_a3f03d4c_55b8_4ef6_b362_b345783acd72').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
+        // 更新 React 状态，UI 由 PrefabPanel 组件渲染
+        setCurrentPrefabInfo(editor_mode.info);
 
         if (Boolean(callback)) callback();
     }
