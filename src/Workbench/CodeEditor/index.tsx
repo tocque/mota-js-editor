@@ -40,7 +40,6 @@ export const CodeEditor: FC = () => {
 
   // 状态 ref（供 legacy API 访问）
   const stateRef = useRef({
-    isString: false,
     lintAutocomplete: false,
     preview: null as unknown,
   });
@@ -323,7 +322,6 @@ export const CodeEditor: FC = () => {
       contextRef.current = context;
 
       // 设置状态
-      stateRef.current.isString = config.isString ?? false;
       stateRef.current.lintAutocomplete = config.lint ?? false;
       stateRef.current.preview = config.preview ?? null;
 
@@ -378,7 +376,6 @@ export const CodeEditor: FC = () => {
       openWithContext(context, {
         initialValue,
         lint: config.lint,
-        isString: config.isString,
         preview: config.preview,
         scrollTop: config.scrollTop,
       });
@@ -392,7 +389,6 @@ export const CodeEditor: FC = () => {
       hide,
       getScrollInfo: () => codeEditorRef.current?.getScrollInfo() || { top: 0 },
       scrollTo: (x, y) => codeEditorRef.current?.scrollTo(x, y),
-      getIsString: () => stateRef.current.isString,
       printf,
       printe,
       // HandlerDeps

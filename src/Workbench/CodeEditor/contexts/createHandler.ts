@@ -173,7 +173,6 @@ export function createHandler(deps: HandlerDeps): Handler {
       initialValue,
       {
         lint: args.lint,
-        isString,
         preview: args.preview,
         scrollTop: lastOffset[id] || 0,
         contextId: id,

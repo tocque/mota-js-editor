@@ -32,7 +32,7 @@ export const defaultCobj: FieldConfig = {
   _data: '',
   _string: (args: FieldArgs): boolean => {
     const thiseval = args.vobj;
-    return typeof thiseval === 'string' && thiseval[0] === '"';
+    return typeof thiseval === 'string';
   },
   _leaf: (args: FieldArgs): boolean => {
     const thiseval = args.vobj;

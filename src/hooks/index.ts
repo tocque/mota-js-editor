@@ -21,5 +21,6 @@ export { useTableMeta, useFloorTableMeta, useLocTableMeta } from "./useTableMeta
 export {
   useFloorDataSuspense,
   useTowerDataSuspense,
+  useFunctionsDataSuspense,
   useTableMetaSuspense,
 } from "./suspense";

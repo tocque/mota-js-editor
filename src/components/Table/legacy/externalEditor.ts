@@ -105,7 +105,6 @@ export function openExternalEditor(
           initialValue,
           {
             lint: config._lint,
-            isString,
             preview: config._preview,
           },
           {

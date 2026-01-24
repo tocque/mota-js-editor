@@ -35,8 +35,6 @@ export interface EditorConfig {
   initialValue: string;
   /** 是否启用 lint 检查 */
   lint?: boolean;
-  /** 是否为字符串模式 */
-  isString?: boolean;
   /** 预览数据 */
   preview?: unknown;
   /** 滚动位置 */
@@ -60,8 +58,6 @@ export interface CodeEditorAPI {
   getScrollInfo(): { top: number };
   /** 滚动到指定位置 */
   scrollTo(x: number, y: number): void;
-  /** 获取是否为字符串模式 */
-  getIsString(): boolean;
   /** 打印成功消息 */
   printf(message: string): void;
   /** 打印错误消息 */
@@ -102,8 +98,6 @@ export type MultiLineCallback = (newValue: string, b: unknown, f: unknown) => vo
 export interface OpenConfig {
   /** 是否启用语法检查 */
   lint?: boolean;
-  /** 是否为字符串编辑模式 */
-  isString?: boolean;
   /** 预览数据 */
   preview?: unknown;
   /** 滚动位置（用于恢复） */

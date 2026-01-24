@@ -1,27 +1,84 @@
-export const FunctionsPanel = () => {
+/**
+ * FunctionsPanel - 脚本编辑面板
+ *
+ * 使用 Suspense 架构，数据状态由 ContentBoundary 统一处理
+ * 业务组件只写"数据已就绪"的逻辑
+ */
+
+import { useCallback, useState, type FC } from "react";
+import { ContentLeftTab } from "../components/ContentLeftTab";
+import { Table, EditModeSegmented } from "@/components/Table";
+import { useTableMetaEditor } from "@/components/Table/hooks";
+import { useFunctionsDataSuspense, useTableMetaSuspense } from "@/hooks";
+import { functionsService } from "@/services/functions";
+import type { EditMode, TableAction } from "@/components/Table/types";
+import type { Action } from "@/utils/action";
+
+/**
+ * FunctionsPanelContent - 内容组件（使用 Suspense hooks）
+ *
+ * 这个组件会在数据未就绪时 throw handler
+ * 由 ContentLeftTab 捕获并显示恢复 UI
+ */
+interface FunctionsPanelContentProps {
+  editMode: EditMode;
+}
+
+const FunctionsPanelContent: FC<FunctionsPanelContentProps> = ({ editMode }) => {
+  // 使用 Suspense 版本的 hooks - 数据未就绪时会 throw
+  const [functions] = useFunctionsDataSuspense();
+  const meta = useTableMetaSuspense("functionsComment");
+
+  // 统一的变更处理 - 即时保存
+  const handleChange = useCallback(async (action: TableAction) => {
+    try {
+      functionsService.saveFunctionsData([action as Action]);
+      printf?.("保存成功！");
+    } catch (err) {
+      printe?.(String(err));
+    }
+  }, []);
+
   return (
-    <div id="left8" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
-      {/* functions */}
-      <h3 className="leftTabHeader">
-        脚本编辑&nbsp;&nbsp;
-        <button onClick={() => editor.mode.onmode('save')}>保存</button>&nbsp;&nbsp;
-        <button onClick={() => editor_multi.editCommentJs('functions')}>
-          配置表格
-        </button>
-      </h3>
-      <div className="leftTabContent">
-        <div className="etable">
-          <table>
-            <tbody id="table_e260a2be_5690_476a_b04e_dacddede78b3">
-              <tr>
-                <td>条目</td>
-                <td>注释</td>
-                <td>值</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <Table
+      data={functions}
+      commentObj={meta}
+      onChange={handleChange}
+      editMode={editMode}
+    />
+  );
+};
+
+/**
+ * FunctionsPanel - 面板组件
+ *
+ * 负责布局和 actions，不直接依赖数据
+ * actions 始终显示，不受数据加载状态影响
+ */
+export const FunctionsPanel: FC = () => {
+  // 在 Panel 层维护 editMode（不依赖数据）
+  const [editMode, setEditMode] = useState<EditMode>("change");
+
+  // 使用 useTableMetaEditor 获取编辑器打开函数
+  const { openEditor } = useTableMetaEditor("functionsComment");
+
+  // 配置表格按钮点击处理
+  const handleConfigure = useCallback(() => {
+    openEditor();
+  }, [openEditor]);
+
+  // 操作按钮区域（始终显示）
+  const actions = (
+    <>
+      <EditModeSegmented value={editMode} onChange={setEditMode} />
+      &nbsp;&nbsp;
+      <button onClick={handleConfigure}>配置表格</button>
+    </>
+  );
+
+  return (
+    <ContentLeftTab id="left8" title="脚本编辑" actions={actions}>
+      <FunctionsPanelContent editMode={editMode} />
+    </ContentLeftTab>
   );
 };

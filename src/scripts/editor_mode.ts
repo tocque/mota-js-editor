@@ -271,15 +271,6 @@ export const editor_mode = function (editor) {
     }
 
     editor_mode.prototype.functions = function (callback) {
-        var objs = [];
-        editor.file.editFunctions([], function (objs_) {
-            objs = objs_;
-            //console.log(objs_)
-        });
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_e260a2be_5690_476a_b04e_dacddede78b3').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
         if (Boolean(callback)) callback();
     }
 

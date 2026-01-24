@@ -16,8 +16,6 @@ export interface EditorBlockly {
 export interface EditorMultiOpenConfig {
   /** 是否启用语法检查 */
   lint?: boolean;
-  /** 是否为字符串编辑模式 */
-  isString?: boolean;
   /** 预览数据 */
   preview?: unknown;
   /** 滚动位置（用于恢复） */
