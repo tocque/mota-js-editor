@@ -17,8 +17,6 @@ const App: FC = () => {
 
   return (
     <>
-      <link href="_server/css/editor.css" rel="stylesheet" />
-      <link href="_server/thirdparty/awesomplete.css" rel="stylesheet" />
       <link id="color_css" rel="stylesheet" />
 
       <Workbench />

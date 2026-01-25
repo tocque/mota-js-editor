@@ -22,5 +22,6 @@ export {
   useFloorDataSuspense,
   useTowerDataSuspense,
   useFunctionsDataSuspense,
+  useCommonEventDataSuspense,
   useTableMetaSuspense,
 } from "./suspense";

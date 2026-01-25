@@ -8,5 +8,6 @@
 export { useFloorDataSuspense } from "./useFloorDataSuspense";
 export { useTowerDataSuspense } from "./useTowerDataSuspense";
 export { useFunctionsDataSuspense } from "./useFunctionsDataSuspense";
+export { useCommonEventDataSuspense } from "./useCommonEventDataSuspense";
 export { useTableMetaSuspense } from "./useTableMetaSuspense";
 export { useDataSuspense } from "./useDataSuspense";

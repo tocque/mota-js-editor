@@ -275,15 +275,6 @@ export const editor_mode = function (editor) {
     }
 
     editor_mode.prototype.commonevent = function (callback) {
-        var objs = [];
-        editor.file.editCommonEvent([], function (objs_) {
-            objs = objs_;
-            //console.log(objs_)
-        });
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_b7bf0124_99fd_4af8_ae2f_0017f04a7c7d').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
         if (Boolean(callback)) callback();
     }
 

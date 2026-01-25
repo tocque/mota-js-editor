@@ -34,6 +34,8 @@ import 'codemirror/lib/codemirror.css';
 import * as tern from 'tern';
 import { createEditor } from "./scripts/editor";
 import Awesomplete from "awesomplete";
+import "awesomplete/awesomplete.css";
+import "@/css/editor.css";
 
 export const setupEditor = once(async () => {
 
