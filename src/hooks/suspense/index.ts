@@ -10,4 +10,6 @@ export { useTowerDataSuspense } from "./useTowerDataSuspense";
 export { useFunctionsDataSuspense } from "./useFunctionsDataSuspense";
 export { useCommonEventDataSuspense } from "./useCommonEventDataSuspense";
 export { useTableMetaSuspense } from "./useTableMetaSuspense";
+export { useLocTableMetaSuspense } from "./useLocTableMetaSuspense";
+export { useEditorReadySuspense } from "./useEditorReadySuspense";
 export { useDataSuspense } from "./useDataSuspense";

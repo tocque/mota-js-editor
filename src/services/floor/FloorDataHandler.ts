@@ -18,13 +18,11 @@ import type { FloorData } from "@/types";
  */
 function parseFloorContent(content: string, floorId: string): FloorData {
   try {
-    // 移除 "main.floors.{floorId} =" 前缀
-    const prefix = `main.floors.${floorId} =`;
     let jsonStr = content.trim();
 
-    if (jsonStr.startsWith(prefix)) {
-      jsonStr = jsonStr.substring(prefix.length).trim();
-    }
+    // 使用正则匹配 "main.floors.{floorId}" 后跟可选空白和等号
+    const prefixPattern = new RegExp(`^main\\.floors\\.${floorId}\\s*=\\s*`);
+    jsonStr = jsonStr.replace(prefixPattern, '');
 
     // 解析 JSON
     const data = JSON.parse(jsonStr) as FloorData;

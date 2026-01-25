@@ -15,7 +15,11 @@ export { useFloorData } from "./useFloor";
 export { useTowerData } from "./useTower";
 
 // TableMeta 业务 hooks
-export { useTableMeta, useFloorTableMeta, useLocTableMeta } from "./useTableMeta";
+export {
+  useTableMeta,
+  selectFloorMeta,
+  selectLocMeta,
+} from "./useTableMeta";
 
 // Suspense 版本的 hooks
 export {
@@ -24,4 +28,5 @@ export {
   useFunctionsDataSuspense,
   useCommonEventDataSuspense,
   useTableMetaSuspense,
+  useLocTableMetaSuspense,
 } from "./suspense";

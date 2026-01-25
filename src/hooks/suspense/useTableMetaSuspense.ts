@@ -11,8 +11,7 @@ import {
 } from "@/services/tableMeta/tableMetaService";
 import type { CommentObject } from "@/components/Table";
 import { useDataSuspense } from "./useDataSuspense";
-import { editorHandler } from "@/fs/EditorHandler";
-import { useSignal } from "../useFs";
+import { useEditorReadySuspense } from "./useEditorReadySuspense";
 
 /**
  * Suspense 版本的表格元数据 Hook
@@ -43,10 +42,7 @@ import { useSignal } from "../useFs";
  */
 export function useTableMetaSuspense(key: MetaFileKey): CommentObject {
   // 先等待 editor ready（TableMeta 的 parse 依赖全局变量）
-  const editorContent = useSignal(editorHandler.content);
-  if (editorContent.status !== "loaded") {
-    throw editorHandler.waitForSettled();
-  }
+  useEditorReadySuspense();
 
   const handler = tableMetaService.getHandler(key);
   const [data] = useDataSuspense(handler);

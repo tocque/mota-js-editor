@@ -1,5 +1,7 @@
 import { setCurrentFloorId } from '@/stores/editorState';
 import { setCurrentPrefabInfo } from '@/stores/prefabState';
+import { setCurrentLocPos } from '@/stores/locState';
+import { locService } from '@/services/loc';
 
 export const editor_mode = function (editor) {
     var core = editor.core;
@@ -83,10 +85,18 @@ export const editor_mode = function (editor) {
         }
         switch (mode) {
             case 'loc':
-                editor.file.editLoc(editor_mode.pos.x, editor_mode.pos.y, actionList, function (objs_) {
-                    cb(objs_);
+                // 使用 locService 保存数据
+                try {
+                    locService.saveLocData(
+                        editor.currentFloorId,
+                        { x: editor_mode.pos.x, y: editor_mode.pos.y },
+                        actionList
+                    );
                     editor.drawPosSelection();
-                });
+                    cb([null]); // 模拟成功回调
+                } catch (err) {
+                    cb([String(err)]);
+                }
                 break;
             case 'enemyitem':
                 if (editor_mode.info.images == 'enemys' || editor_mode.info.images == 'enemy48') {
@@ -225,20 +235,12 @@ export const editor_mode = function (editor) {
     /////////////////////////////////////////////////////////////////////////////
 
     editor_mode.prototype.loc = function (callback) {
-        //editor.pos={x: 0, y: 0};
         if (!core.isset(editor.pos)) return;
         editor_mode.pos = editor.pos;
-        document.getElementById('pos_a6771a78_a099_417c_828f_0a24851ebfce').innerText = editor_mode.pos.x + ',' + editor_mode.pos.y;
 
-        var objs = [];
-        editor.file.editLoc(editor_mode.pos.x, editor_mode.pos.y, [], function (objs_) {
-            objs = objs_;
-            //console.log(objs_)
-        });
-        //只查询不修改时,内部实现不是异步的,所以可以这么写
-        var tableinfo = editor.table.objToTable(objs[0], objs[1]);
-        document.getElementById('table_3d846fc4_7644_44d1_aa04_433d266a73df').innerHTML = tableinfo.HTML;
-        tableinfo.listen(tableinfo.guids);
+        // 更新 React 状态，UI 由 LocPanel 组件渲染
+        setCurrentLocPos({ x: editor_mode.pos.x, y: editor_mode.pos.y });
+
         editor.drawPosSelection();
         if (Boolean(callback)) callback();
     }
