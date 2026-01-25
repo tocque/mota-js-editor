@@ -702,7 +702,7 @@ div.checkboxSet {
 
 @font-face {
     font-family: code;
-    src: url(./FiraCode.ttf);
+    src: url('@/assets/FiraCode.ttf');
 }
 
 .main .CodeMirror {

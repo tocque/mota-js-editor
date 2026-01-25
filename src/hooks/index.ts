@@ -26,6 +26,7 @@ export {
   useFloorDataSuspense,
   useTowerDataSuspense,
   useFunctionsDataSuspense,
+  usePluginsDataSuspense,
   useCommonEventDataSuspense,
   useTableMetaSuspense,
   useLocTableMetaSuspense,
