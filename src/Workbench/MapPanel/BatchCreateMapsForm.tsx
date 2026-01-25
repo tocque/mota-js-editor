@@ -1,5 +1,5 @@
 import { floorService } from "@/services/floor";
-import { useGameData } from "@/stores/GameDataStore";
+import { useGameCoreInitialized } from "@/stores/GameDataStore";
 import { isValidFloorId } from "@/utils/string";
 import { type FC, useState } from "react";
 
@@ -19,7 +19,7 @@ export const BatchCreateMapsForm: FC<BatchCreateMapsFormProps> = (props) => {
   const [newMapsTo, setNewMapsTo] = useState("5");
   const [newMapsStatus, setNewMapsStatus] = useState(true);
 
-  useGameData((core) => {
+  useGameCoreInitialized((core) => {
     setNewMapsWidth(core.__SIZE__);
     setNewMapsHeight(core.__SIZE__);
   });

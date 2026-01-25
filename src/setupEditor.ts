@@ -9,7 +9,6 @@ import { editor_file, editor_file_wrapper } from "./scripts/editor_file";
 import { editor_mode } from "./scripts/editor_mode";
 import { editor_table_wrapper } from "./scripts/editor_table";
 import { editor_ui_wrapper } from "./scripts/editor_ui";
-import { editor_uievent_wrapper } from "./scripts/editor_uievent";
 import { editor_mappanel_wrapper } from "./scripts/editor_mappanel";
 import { editor_datapanel_wrapper } from "./scripts/editor_datapanel";
 import { editor_materialpanel_wrapper } from "./scripts/editor_materialpanel";
@@ -48,7 +47,6 @@ export const setupEditor = once(async () => {
   window.editor_table_wrapper = editor_table_wrapper;
   window.editor_mode = editor_mode;
   window.editor_ui_wrapper = editor_ui_wrapper;
-  window.editor_uievent_wrapper = editor_uievent_wrapper;
   window.editor_mappanel_wrapper = editor_mappanel_wrapper;
   window.editor_datapanel_wrapper = editor_datapanel_wrapper;
   window.editor_materialpanel_wrapper = editor_materialpanel_wrapper;

@@ -1,4 +1,4 @@
-import { useEditor } from "@/stores/EditorStore";
+import { useEditorInitialized } from "@/stores/EditorStore";
 import { useCurrentFn } from "@/hooks/useCurrentFn";
 import { useState, useCallback, type FC, useRef } from "react";
 import CodeMirror from "codemirror";
@@ -255,7 +255,7 @@ export const CodeEditor: FC = () => {
   }, []);
 
   // ========== 初始化 ==========
-  useEditor(() => {
+  useEditorInitialized(() => {
     if (!textareaRef.current) return;
 
     // 从配置加载字体大小

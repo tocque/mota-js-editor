@@ -8,6 +8,14 @@
 /** Blockly 编辑器接口 */
 export interface EditorBlockly {
   import: (guid: string, options: { type?: string }) => void;
+  confirm?: (apply?: boolean) => void;
+  parse?: () => void;
+  cancel?: () => void;
+  selectPointFromButton?: () => void;
+  triggerReplace?: () => void;
+  triggerExpandCompare?: () => void;
+  showXML?: () => void;
+  runCode?: () => void;
 }
 
 // ============== Editor Multi ==============
@@ -51,27 +59,39 @@ export interface EditorMulti {
 
 /** 编辑器 UI 事件接口 */
 export interface EditorUiEvent {
+  isOpen?: boolean;
+  mode?: string;
+  close: () => void;
+  previewUI: (list: Array<string | Record<string, unknown>>) => void;
   selectMaterial: (
-    value: string,
+    value: string | string[],
     title: string,
     directory: string | undefined,
     transform: ((one: string) => string | null) | null,
-    callback: (data: string) => void,
+    callback: (data: string[]) => void,
   ) => void;
   selectPoint: (
-    floorId: string,
-    x: number,
-    y: number,
-    allowOutside: boolean,
-    callback: (floorId: string, x: number, y: number) => void,
+    floorId?: string,
+    x?: number | string,
+    y?: number | string,
+    bigmap?: boolean,
+    callback?: (floorId: string, x: number | string, y: number | string) => void,
   ) => void;
+  selectFloor: (
+    floorId: string | string[] | null,
+    title: string,
+    callback: (floorId: string) => void,
+  ) => void;
+  searchUsedFlags: () => void;
   popCheckboxSet: (
     value: unknown,
     config: { key: (string | number)[]; prefix: string[] } | (() => { key: (string | number)[]; prefix: string[] }),
     title: string,
-    callback: (value: unknown) => void,
+    callback: (value: Array<string | number>) => void,
   ) => void;
-  previewEditorMulti?: (preview: unknown, value: string) => void;
+  previewEditorMulti?: (mode: string, value: string) => void;
+  previewStatusBar?: (code: string) => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
 }
 
 // ============== Editor ==============

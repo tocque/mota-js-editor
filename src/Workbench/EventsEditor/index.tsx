@@ -1,6 +1,9 @@
 import type { FC } from "react";
+import { useEditor } from "@/stores/EditorStore";
 
 export const EventsEditor: FC = () => {
+  const editor = useEditor();
+
   return (
     <div id="left6" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
       <div style={{ position: "relative", height: "95%" }}>
@@ -11,12 +14,12 @@ export const EventsEditor: FC = () => {
             <button onClick={() => editor_blockly.showXML()}>Show XML</button>
             <button onClick={() => editor_blockly.runCode()}>console.log(obj=code)</button>
             */}
-          <button onClick={() => editor_blockly.confirm()}>确认</button>
-          <button onClick={() => editor_blockly.confirm(true)}>应用</button>
-          <button id="blocklyParse" onClick={() => editor_blockly.parse()}>
+          <button onClick={() => editor_blockly?.confirm?.()}>确认</button>
+          <button onClick={() => editor_blockly?.confirm?.(true)}>应用</button>
+          <button id="blocklyParse" onClick={() => editor_blockly?.parse?.()}>
             解析
           </button>
-          <button onClick={() => editor_blockly.cancel()}>取消</button>
+          <button onClick={() => editor_blockly?.cancel?.()}>取消</button>
           <div
             style={{
               position: "relative",
@@ -29,14 +32,14 @@ export const EventsEditor: FC = () => {
           </div>
           <button
             className="cpPanel"
-            onClick={() => editor_blockly.selectPointFromButton()}
+            onClick={() => editor_blockly?.selectPointFromButton?.()}
             style={{ marginLeft: 5 }}
           >
             地图选点
           </button>
           <button
             className="cpPanel"
-            onClick={() => editor.uievent.searchUsedFlags()}
+            onClick={() => editor?.uievent?.searchUsedFlags?.()}
             style={{ marginLeft: 5 }}
           >
             变量出现位置搜索
@@ -45,7 +48,7 @@ export const EventsEditor: FC = () => {
             type="checkbox"
             className="cpPanel"
             id="blocklyReplace"
-            onChange={() => editor_blockly.triggerReplace()}
+            onChange={() => editor_blockly?.triggerReplace?.()}
             style={{ marginLeft: 10 }}
           />
           <span
@@ -58,7 +61,7 @@ export const EventsEditor: FC = () => {
             type="checkbox"
             className="cpPanel"
             id="blocklyExpandCompare"
-            onChange={() => editor_blockly.triggerExpandCompare()}
+            onChange={() => editor_blockly?.triggerExpandCompare?.()}
             style={{ marginLeft: 10 }}
           />
           <span

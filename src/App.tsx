@@ -1,6 +1,7 @@
 import { useEffect, type FC } from "react";
 import { setupEditor } from "./setupEditor";
 import { Workbench } from "./Workbench";
+import { ModalsProvider } from "./Workbench/modals";
 import { EditorStore } from "./stores/EditorStore";
 import { editorHandler } from "./fs/EditorHandler";
 
@@ -22,41 +23,7 @@ const App: FC = () => {
       <Workbench />
       {/* <script>/* */}
       <div id="gameInject" style={{ display: "none" }} />
-      {/* UI预览 & 地图选点 */}
-      <div id="uieventDiv" style={{ display: "none" }}>
-        <div id="uieventDialog">
-          <div id="uieventHead">
-            <span id="uieventTitle" />
-            <select id="uieventSelect" style={{ marginLeft: 20 }} />
-            <button id="uieventNo">关闭</button>
-            <button id="uieventYes">确定</button>
-          </div>
-          <hr style={{ clear: "both", marginTop: 0 }} />
-          <div id="uieventBody">
-            <canvas className="gameCanvas" id="uievent" />
-            <div id="selectPointBox" />
-            <div
-              id="uieventExtraBody"
-              style={{ display: "none", marginTop: "-10px" }}
-            />
-          </div>
-          <div id="selectPoint">
-            <select id="selectPointFloor" />
-            <div id="selectPointButtons">
-              <input type="button" defaultValue="←" />
-              <input type="button" defaultValue="↑" />
-              <input type="button" defaultValue="↓" />
-              <input type="button" defaultValue="→" />
-              <input
-                type="button"
-                defaultValue="切换大地图"
-                style={{ marginLeft: 10 }}
-              />
-              <input type="button" defaultValue="复制楼层ID" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <ModalsProvider />
     </>
   );
 }

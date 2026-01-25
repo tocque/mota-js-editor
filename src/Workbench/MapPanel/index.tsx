@@ -1,5 +1,5 @@
 import { floorService } from "@/services/floor";
-import { useGameData } from "@/stores/GameDataStore";
+import { useGameCoreInitialized } from "@/stores/GameDataStore";
 import { isValidFloorId } from "@/utils/string";
 import { type FC, useRef, useState } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
@@ -14,7 +14,7 @@ export const MapPanel: FC = () => {
 
   const poutRef = useRef<HTMLTextAreaElement>(null);
 
-  useGameData((core) => {
+  useGameCoreInitialized((core) => {
     setNewMapWidth(core.__SIZE__);
     setNewMapHeight(core.__SIZE__);
   });

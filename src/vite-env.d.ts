@@ -96,5 +96,6 @@ declare global {
     editor_blockly: EditorBlockly | undefined;
     openColorPicker: OpenColorPickerFunc | undefined;
     tern: typeof import("tern");
+    Awesomplete: unknown;
   }
 }

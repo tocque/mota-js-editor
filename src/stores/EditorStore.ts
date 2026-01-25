@@ -1,5 +1,6 @@
 import { createStore } from "@/utils/store/store";
 import { useEffect, useState } from "react";
+import type { Editor } from "@/types";
 
 const useEditorStore = () => {
   const [editorInitialized, setEditorInitialized] = useState(false);
@@ -16,12 +17,26 @@ const useEditorStore = () => {
 
 export const EditorStore = createStore(useEditorStore);
 
-export const useEditor = (accessor: (editor: any) => void) => {
-  const { editorInitialized: editorInitialized } = EditorStore.useStore();
+export const useEditorInitialized = <TEditor = Editor>(accessor: (editor: TEditor) => void) => {
+  const { editorInitialized } = EditorStore.useStore();
 
   useEffect(() => {
     if (editorInitialized) {
-      accessor(editor);
+      const w = typeof window === "undefined"
+        ? undefined
+        : (window as unknown as { editor?: unknown });
+      const ed = w?.editor as TEditor | undefined;
+      if (ed == null) return;
+      accessor(ed);
     }
-  }, [editorInitialized]);
+  }, [editorInitialized, accessor]);
+}
+
+export function useEditor<TEditor = Editor>(): TEditor | undefined {
+  const { editorInitialized } = EditorStore.useStore();
+  if (!editorInitialized) return undefined;
+  const w = typeof window === "undefined"
+    ? undefined
+    : (window as unknown as { editor?: unknown });
+  return (w?.editor as TEditor | undefined) ?? undefined;
 }

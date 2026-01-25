@@ -56,6 +56,27 @@ export interface CoreType {
   flags: Record<string, unknown>;
   floors: Record<string, FloorData>;
   floorIds: string[];
+
+  // 尺寸常量
+  __SIZE__: number;
+  __PIXELS__: number;
+  __HALF_SIZE__: number;
+
+  // 工具方法
+  calValue: (value: string) => number;
+
+  // 绘图方法
+  drawThumbnail: (
+    floorId: string,
+    heroLoc: unknown,
+    options: {
+      ctx: CanvasRenderingContext2D | string;
+      centerX?: number;
+      centerY?: number;
+      all?: boolean;
+    },
+  ) => void;
+
   [key: string]: unknown;
 }
 

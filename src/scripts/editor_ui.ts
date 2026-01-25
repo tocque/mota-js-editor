@@ -115,9 +115,8 @@ export const editor_ui_wrapper = function (editor) {
     editor.uifunctions.body_shortcut = function (e) {
         editor.uivalues.tileSize = [1,1];
 
-        // UI预览 & 地图选点
-        if (editor.uievent && editor.uievent.isOpen) {
-            editor.uievent.onKeyDown(e);
+        // UI预览 & 地图选点 - 键盘事件由 Modal 内部处理
+        if (editor.uievent?.isOpen) {
             return;
         }
 

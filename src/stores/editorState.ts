@@ -9,7 +9,7 @@ import { Store } from '@tanstack/store';
 import { useStore } from '@tanstack/react-store';
 
 interface EditorState {
-  currentFloorId: string;
+  currentFloorId?: string;
 }
 
 /**
@@ -18,7 +18,7 @@ interface EditorState {
  * 初始值从全局 editor.currentFloorId 获取
  */
 export const editorStateStore = new Store<EditorState>({
-  currentFloorId: typeof editor !== 'undefined' ? editor.currentFloorId : '',
+  currentFloorId: typeof editor !== 'undefined' ? editor.currentFloorId : undefined,
 });
 
 /**
@@ -36,6 +36,15 @@ export function setCurrentFloorId(floorId: string): void {
  *
  * 自动订阅状态变化，当 currentFloorId 变化时触发重渲染
  */
-export function useCurrentFloorId(): string {
+export function useCurrentFloorId(): string | undefined {
   return useStore(editorStateStore, (state) => state.currentFloorId);
+}
+
+/**
+ * 获取当前楼层 ID（非 Hook，用于回调函数中）
+ *
+ * 直接读取 store 当前值，不触发重渲染
+ */
+export function getCurrentFloorId(): string | undefined {
+  return editorStateStore.state.currentFloorId;
 }

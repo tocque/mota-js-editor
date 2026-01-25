@@ -31,3 +31,7 @@ export {
   useTableMetaSuspense,
   useLocTableMetaSuspense,
 } from "./suspense";
+
+// Canvas 相关 hooks
+export { useFloorThumbnailSource } from "./useFloorThumbnailSource";
+export type { FloorThumbnailOptions, FloorThumbnailViewport } from "./useFloorThumbnailSource";

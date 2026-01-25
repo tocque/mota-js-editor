@@ -153,7 +153,7 @@ export function openExternalEditor(
             }
             return one;
           },
-          (data: string) => {
+          (data: string[]) => {
             let newValue: unknown = data;
             if (config._onconfirm) {
               try {
