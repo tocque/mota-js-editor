@@ -12,7 +12,7 @@
 
 import { produce } from "immer";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
-import { JsonDataHandler } from "@/fs/JsonDataHandler";
+import { Json2xDataHandler } from "@/fs/Json2xDataHandler";
 import type { Content } from "@/fs";
 import { applyActions, type Action } from "@/utils/action";
 import { ContentUtils } from "@/fs/ContentUtils";
@@ -42,15 +42,15 @@ interface EventsData {
  */
 class CommonEventServiceImpl {
   /** Events 数据 DataHandler（单例，懒加载） */
-  private dataHandler: JsonDataHandler<EventsData> | null = null;
+  private dataHandler: Json2xDataHandler<EventsData> | null = null;
 
   /**
    * 获取或创建 DataHandler（懒加载）
    */
-  private getDataHandler(): JsonDataHandler<EventsData> {
+  private getDataHandler(): Json2xDataHandler<EventsData> {
     if (!this.dataHandler) {
       const fileHandler = FileHandlerManager.get(EVENTS_DATA_PATH);
-      this.dataHandler = new JsonDataHandler<EventsData>(
+      this.dataHandler = new Json2xDataHandler<EventsData>(
         fileHandler,
         EVENTS_VAR_NAME,
         "Events Data",

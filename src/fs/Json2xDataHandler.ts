@@ -1,5 +1,5 @@
 /**
- * JsonDataHandler - 通用 JSON 数据处理器
+ * Json2xDataHandler - 2.x 风格 JSON 数据处理器
  *
  * 用于处理 `var xxx = {json}` 格式的 JS 数据文件
  * 可被 Tower、Items、Enemys、MapsBlocks、Events 等服务复用
@@ -14,11 +14,11 @@ import type { FileHandler } from "./FileHandler";
 import { serializeToJsDataFile } from "@/utils/serialize";
 
 /**
- * JsonDataHandler - 通用 JSON 数据处理器
+ * Json2xDataHandler - 通用 JSON 数据处理器
  *
  * @typeParam T - 数据类型
  */
-export class JsonDataHandler<T> extends DataHandler<T> {
+export class Json2xDataHandler<T> extends DataHandler<T> {
   private varName: string;
 
   /**
