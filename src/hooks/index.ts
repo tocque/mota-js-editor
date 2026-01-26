@@ -30,6 +30,7 @@ export {
   useCommonEventDataSuspense,
   useTableMetaSuspense,
   useLocTableMetaSuspense,
+  useEditorReadySuspense,
 } from "./suspense";
 
 // Canvas 相关 hooks

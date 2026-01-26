@@ -12,7 +12,7 @@ import { GridCanvas, labelText, selectionBox } from "@/components/GridCanvas";
 import type { GridMarker } from "@/components/GridCanvas";
 import { LongPressButton } from "@/components/LongPressButton";
 import { useFloorThumbnailSource } from "@/hooks/useFloorThumbnailSource";
-import { floorService } from "@/services/floor";
+import { useEditorReadySuspense, useFloorDataSuspense } from "@/hooks";
 import { towerService } from "@/services/tower";
 import { useCurrentFloorId } from "@/stores/editorState";
 import { useGameCore } from "@/stores/GameDataStore";
@@ -40,12 +40,24 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
     onResultChange,
   } = props;
 
+  // Suspense hooks - 确保 editor 和 floor 数据都已就绪
+  useEditorReadySuspense();
+
   const storeFloorId = useCurrentFloorId();
-  const core = useGameCore<CoreType>();
+  // 在 useEditorReadySuspense 之后，core 一定存在
+  const core = useGameCore<CoreType>() as CoreType;
 
   const [currentFloorId, setCurrentFloorId] = useState<string>(
     () => initialFloorId || storeFloorId || "",
   );
+
+  // 使用 Suspense 获取楼层数据 - 切换楼层时会自动触发加载
+  const [floor] = useFloorDataSuspense(currentFloorId);
+
+  // width/height 直接从 floor 派生，提供默认值
+  const width = floor.width ?? core.__SIZE__;
+  const height = floor.height ?? core.__SIZE__;
+
   const [multipoints, setMultipoints] = useState<string[]>(() => {
     if (isMultipointString(initialX, initialY)) {
       return parseMultipoints(initialX as string, initialY as string);
@@ -56,66 +68,48 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
     if (isMultipointString(initialX, initialY)) {
       return getLastCoordinate(initialX as string);
     }
-    if (typeof initialX === "string") return core ? core.calValue(initialX) : 0;
+    if (typeof initialX === "string") return core.calValue(initialX);
     return initialX ?? 0;
   });
   const [posY, setPosY] = useState<number>(() => {
     if (isMultipointString(initialX, initialY)) {
       return getLastCoordinate(initialY as string);
     }
-    if (typeof initialY === "string") return core ? core.calValue(initialY) : 0;
+    if (typeof initialY === "string") return core.calValue(initialY);
     return initialY ?? 0;
   });
   const [isBigmap, setIsBigmap] = useState<boolean>(() => !!initialBigmap);
-  const [width, setWidth] = useState<number>(() => {
-    if (!core) return 0;
-    const fid = initialFloorId || storeFloorId || "";
-    const floorData = fid ? floorService.getFloor(fid) : null;
-    return floorData?.width || core.__SIZE__;
-  });
-  const [height, setHeight] = useState<number>(() => {
-    if (!core) return 0;
-    const fid = initialFloorId || storeFloorId || "";
-    const floorData = fid ? floorService.getFloor(fid) : null;
-    return floorData?.height || core.__SIZE__;
-  });
-  const [left, setLeft] = useState<number>(() => {
-    if (!core) return 0;
-    const fid = initialFloorId || storeFloorId || "";
-    const floorData = fid ? floorService.getFloor(fid) : null;
-    const resolvedWidth = floorData?.width || core.__SIZE__;
+  // left/top 存储原始值，实际使用时会 clamp 到当前楼层边界
+  const [leftRaw, setLeft] = useState<number>(() => {
     const x =
       typeof initialX === "number" ? initialX
         : typeof initialX === "string" ? core.calValue(initialX)
           : 0;
-    return clamp(x - core.__HALF_SIZE__, 0, resolvedWidth - core.__SIZE__);
+    return x - core.__HALF_SIZE__;
   });
-  const [top, setTop] = useState<number>(() => {
-    if (!core) return 0;
-    const fid = initialFloorId || storeFloorId || "";
-    const floorData = fid ? floorService.getFloor(fid) : null;
-    const resolvedHeight = floorData?.height || core.__SIZE__;
+  const [topRaw, setTop] = useState<number>(() => {
     const y =
       typeof initialY === "number" ? initialY
         : typeof initialY === "string" ? core.calValue(initialY)
           : 0;
-    return clamp(y - core.__HALF_SIZE__, 0, resolvedHeight - core.__SIZE__);
+    return y - core.__HALF_SIZE__;
   });
+
+  // 派生 clamped 值 - 当楼层变化时自动适应新边界
+  const left = clamp(leftRaw, 0, width - core.__SIZE__);
+  const top = clamp(topRaw, 0, height - core.__SIZE__);
 
   const floorOptions = useMemo(() => towerService.getFloorIds(), []);
 
   // 计算网格像素偏移（用于大地图模式居中）
   const { gridSize: logicalGridSize, gridOffset } = useMemo(() => {
-    if (!core) return { gridSize: 32, gridOffset: [0, 0] as LocPOD };
-    const safeWidth = width || core.__SIZE__;
-    const safeHeight = height || core.__SIZE__;
-    const scale = isBigmap ? core.__SIZE__ / Math.max(safeWidth, safeHeight) : 1;
+    const scale = isBigmap ? core.__SIZE__ / Math.max(width, height) : 1;
     const size = 32 * scale;
     const leftOffset = isBigmap
-      ? core.__PIXELS__ * Math.max(0, (1 - safeWidth / safeHeight) / 2)
+      ? core.__PIXELS__ * Math.max(0, (1 - width / height) / 2)
       : 0;
     const topOffset = isBigmap
-      ? core.__PIXELS__ * Math.max(0, (1 - safeHeight / safeWidth) / 2)
+      ? core.__PIXELS__ * Math.max(0, (1 - height / width) / 2)
       : 0;
     return { gridSize: size, gridOffset: [leftOffset, topOffset] as LocPOD };
   }, [core, height, isBigmap, width]);
@@ -125,7 +119,7 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
     floorId: currentFloorId,
     viewport: isBigmap
       ? { mode: "all" }
-      : { mode: "partial", centerX: left + (core?.__HALF_SIZE__ ?? 0), centerY: top + (core?.__HALF_SIZE__ ?? 0) },
+      : { mode: "partial", centerX: left + core.__HALF_SIZE__, centerY: top + core.__HALF_SIZE__ },
   });
 
   // 创建标记数组
@@ -177,8 +171,8 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
     }
   }, [currentFloorId, multipoints, onResultChange, posX, posY]);
 
+  // 切换楼层 - 只更新 floorId，width/height 会自动从 floor 派生
   const setPoint = useCallback((targetFloorId?: string, nextX?: number, nextY?: number) => {
-    if (!core) return;
     const floorIds = towerService.getFloorIds();
     let nextFloorId = targetFloorId || storeFloorId || "";
     if (!floorIds.includes(nextFloorId)) {
@@ -186,21 +180,16 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
     }
     const resolvedX = nextX != null ? nextX : posX || 0;
     const resolvedY = nextY != null ? nextY : posY || 0;
-    const floorData = nextFloorId ? floorService.getFloor(nextFloorId) : null;
-    const resolvedWidth = floorData?.width || core.__SIZE__;
-    const resolvedHeight = floorData?.height || core.__SIZE__;
 
     setCurrentFloorId(nextFloorId);
     setPosX(resolvedX);
     setPosY(resolvedY);
-    setWidth(resolvedWidth);
-    setHeight(resolvedHeight);
-    setLeft(clamp(resolvedX - core.__HALF_SIZE__, 0, resolvedWidth - core.__SIZE__));
-    setTop(clamp(resolvedY - core.__HALF_SIZE__, 0, resolvedHeight - core.__SIZE__));
+    // 更新 left/top 原始值，会自动 clamp 到新楼层边界
+    setLeft(resolvedX - core.__HALF_SIZE__);
+    setTop(resolvedY - core.__HALF_SIZE__);
   }, [core, storeFloorId, posX, posY]);
 
   const move = useCallback((dx: number, dy: number) => {
-    if (!core) return;
     if (isBigmap) return;
     setLeft((prev) => clamp(prev + dx, 0, width - core.__SIZE__));
     setTop((prev) => clamp(prev + dy, 0, height - core.__SIZE__));
@@ -209,8 +198,7 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
   const triggerBigmap = useCallback(() => {
     setIsBigmap((prev) => !prev);
     setMultipoints([]);
-    setPoint(currentFloorId);
-  }, [currentFloorId, setPoint]);
+  }, []);
 
   // Handle WASD keyboard navigation
   useEffect(() => {
@@ -231,14 +219,13 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
 
   // GridCanvas 点击事件：gridPos 是相对于 canvas 视口的网格坐标
   const handleCanvasClick = useCallback((gridPos: LocPOD) => {
-    if (!core) return;
     const [gx, gy] = gridPos;
     // 转换为绝对楼层坐标
     const absoluteX = isBigmap ? gx : left + gx;
     const absoluteY = isBigmap ? gy : top + gy;
     setPosX(clamp(absoluteX, 0, width - 1));
     setPosY(clamp(absoluteY, 0, height - 1));
-  }, [core, isBigmap, left, top, width, height]);
+  }, [isBigmap, left, top, width, height]);
 
   // GridCanvas 右键菜单事件：多选模式
   const handleCanvasContextMenu = useCallback((gridPos: LocPOD) => {
@@ -257,7 +244,6 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
   }, [isBigmap, left, top]);
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!core) return;
     const floorIds = towerService.getFloorIds();
     const index = floorIds.indexOf(currentFloorId);
     const delta = event.deltaY > 0 ? -1 : 1;
@@ -277,9 +263,6 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
 
   return (
     <>
-      {!core ? (
-        <div style={{ padding: 12 }}>Loading...</div>
-      ) : null}
       <div
         id="uieventBody"
         style={{ overflow: "hidden" }}
@@ -287,8 +270,8 @@ export const SelectPointContent: FC<SelectPointContentProps> = (props) => {
       >
         <GridCanvas
           source={thumbnailSource}
-          width={core?.__PIXELS__ ?? 0}
-          height={core?.__PIXELS__ ?? 0}
+          width={core.__PIXELS__}
+          height={core.__PIXELS__}
           gridSize={[logicalGridSize, logicalGridSize]}
           offset={gridOffset}
           markers={markers}

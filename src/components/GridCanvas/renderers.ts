@@ -25,9 +25,12 @@ export const selectionBox = (
     const adjustedWidth = gridWidth - 6;
     const adjustedHeight = gridHeight - 6;
 
-    // 绘制外层黑边 (box-shadow: 0 0 0 3px #000)
+    // 先画整体黑框，再画白框覆盖中间
+    // 效果：外层 1px 黑 + 中间 2px 白 + 内层 1px 黑
+
+    // 绘制整体黑色边框 (4px 宽)
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.strokeRect(
       adjustedX - 1.5,
       adjustedY - 1.5,
@@ -35,20 +38,15 @@ export const selectionBox = (
       adjustedHeight + 3,
     );
 
-    // 绘制中间白边 (box-shadow: 0 0 0 2px #fff)
+    // 绘制白色边框 (2px 宽，覆盖黑框中间)
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     ctx.strokeRect(
-      adjustedX - 0.5,
-      adjustedY - 0.5,
-      adjustedWidth + 1,
-      adjustedHeight + 1,
+      adjustedX - 1.5,
+      adjustedY - 1.5,
+      adjustedWidth + 3,
+      adjustedHeight + 3,
     );
-
-    // 绘制内层黑边 (border: 1px solid #000)
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
 
     // 绘制数字标签（如果提供）
     if (label) {

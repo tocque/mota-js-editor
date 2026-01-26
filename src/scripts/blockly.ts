@@ -1,7 +1,9 @@
-import * as Blockly from "blockly";
-import * as libraryBlocks from 'blockly/blocks';
-import { javascriptGenerator } from 'blockly/javascript';
-import * as ZhHans from 'blockly/msg/zh-hans';
+// 使用旧版本 Blockly (3.x) 以保持现有功能
+// 新代码应使用 'blockly' (v12)
+import * as Blockly from "blockly-legacy";
+import * as libraryBlocks from 'blockly-legacy/blocks';
+import { javascriptGenerator } from 'blockly-legacy/javascript';
+import * as ZhHans from 'blockly-legacy/msg/zh-hans';
 
 window.Blockly = Blockly;
 

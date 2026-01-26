@@ -43,6 +43,7 @@ import { FloorData } from '@/services/floor/types';
 
 - 使用 `const XX: FC<Props> = (props) => {}` 声明组件
 - props 在函数体内解构：`const { ... } = props;`
+- **React 19+ 中不使用 `forwardRef`**：ref 作为标准 prop 传递
 
 ```typescript
 // ✅ 正确
@@ -55,4 +56,21 @@ const MyComponent: FC<Props> = (props) => {
 const MyComponent: FC<Props> = ({ title, onClick }) => {
   return <div>{title}</div>;
 };
+
+// ✅ 正确：React 19 中 ref 作为标准 prop
+interface MyComponentProps {
+  ref?: React.Ref<MyComponentRef>;
+  // ... 其他 props
+}
+
+function MyComponent(props: MyComponentProps) {
+  const { ref, ...otherProps } = props;
+  useImperativeHandle(ref, () => ({ ... }));
+  return <div>...</div>;
+}
+
+// ❌ 错误：React 19 中不应使用 forwardRef
+const MyComponent = forwardRef<Ref, Props>((props, ref) => {
+  // ...
+});
 ```

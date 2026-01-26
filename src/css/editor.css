@@ -442,7 +442,6 @@ table.row {
 }
 
 #uieventYes {
-    display: none;
     float: right;
     margin-right: 15px;
 }
@@ -465,7 +464,6 @@ table.row {
 }
 
 #selectPoint {
-    display: none;
     margin-left: 10px;
     margin-bottom: 10px;
 }

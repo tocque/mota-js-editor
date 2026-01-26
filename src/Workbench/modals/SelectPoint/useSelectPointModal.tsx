@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ContentBoundary } from "@/components/ContentBoundary";
 import { useEditorInitialized } from "@/stores/EditorStore";
 import type { SelectPointOptions, SelectPointResult, UseModalReturn } from "../shared/types";
 import { SelectPointContent } from "./SelectPointContent";
@@ -34,7 +35,9 @@ const SelectPointShell: React.FC<{
           <button id="uieventYes" onClick={onConfirm}>确定</button>
         </div>
         <hr style={{ clear: "both", marginTop: 0 }} />
-        {children}
+        <ContentBoundary loadingUI={<div style={{ padding: 12 }}>加载中...</div>}>
+          {children}
+        </ContentBoundary>
       </div>
     </div>
   );

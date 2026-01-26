@@ -66,7 +66,14 @@ export function openExternalEditor(
     case 'event': {
       const editorBlockly = getEditorBlockly();
       if (editorBlockly) {
-        editorBlockly.import(guid, { type: config._event });
+        const currentValue = getValue(field);
+        // 传入原始数据（已解析的对象），不是 JSON 字符串
+        const initialValue = currentValue ?? [];
+
+        editorBlockly.import(initialValue, { type: config._event }, {
+          // 回调接收已解析的值，Blockly 编辑器保证这是有效数据
+          onConfirm: (value) => setValue(field, value),
+        });
       } else {
         console.warn('editor_blockly not available');
       }

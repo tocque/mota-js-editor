@@ -33,6 +33,8 @@ export function drawSelectionBox(
   const adjustedY = boxY + marginTop;
   const adjustedWidth = gridWidth - 6;
   const adjustedHeight = gridHeight - 6;
+  
+  ctx.globalAlpha = 0.8;
 
   // 绘制外层黑边 (box-shadow: 0 0 0 3px #000)
   ctx.strokeStyle = "#000000";
@@ -58,6 +60,8 @@ export function drawSelectionBox(
   ctx.strokeStyle = "#000000";
   ctx.lineWidth = 1;
   ctx.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+  
+  ctx.globalAlpha = 1;
 
   // 绘制数字标签（如果提供）
   if (label) {

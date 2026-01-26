@@ -15,9 +15,10 @@ import { editor_materialpanel_wrapper } from "./scripts/editor_materialpanel";
 import { editor_listen_wrapper } from "./scripts/editor_listen";
 import localforage from "localforage";
 import { MotaActionParser } from "./scripts/MotaActionParser";
-import "./scripts/blockly";
-import { editor_blockly } from "./scripts/editor_blockly";
-import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
+// Legacy Blockly 依赖已移除，使用新的 src/blockly 模块
+// import "./scripts/blockly";
+// import { editor_blockly } from "./scripts/editor_blockly";
+// import editor_blocklyconfig from "./scripts/editor_blocklyconfig?raw";
 import * as LZString from "lz-string";
 import CodeMirror from "codemirror";
 import 'codemirror/mode/javascript/javascript';
@@ -55,15 +56,17 @@ export const setupEditor = once(async () => {
   window.localforage = localforage;
   window.editor = createEditor();
   window.MotaActionParser = MotaActionParser;
-  window.editor_blockly = editor_blockly;
-  window.editor_blocklyconfig = editor_blocklyconfig;
+  // Legacy Blockly 依赖已移除，editor_blockly 由 EventsEditor 组件提供
+  // window.editor_blockly = editor_blockly;
+  // window.editor_blocklyconfig = editor_blocklyconfig;
   window.CodeMirror = CodeMirror;
   window.tern = tern;
   window.Awesomplete = Awesomplete;
 
   const scriptList = [
     'libs/thirdparty/zip.min.js',
-    '_server/blockly/Converter.bundle.min.js',
+    // Legacy Blockly Converter 已移除
+    // '_server/blockly/Converter.bundle.min.js',
     '_server/CodeMirror/defs.js',
     '_server/thirdparty/color.all.min.js',
     '_server/thirdparty/caret-position.js',

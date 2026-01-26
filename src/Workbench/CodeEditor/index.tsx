@@ -69,17 +69,6 @@ export const CodeEditor: FC = () => {
     window.open(url, "_blank");
   });
 
-  const getIndent = useCurrentFn((field: string) => {
-    if (editor?.mode?.indent) {
-      return editor.mode.indent(field);
-    }
-    return "\t";
-  });
-
-  const getEditorMode = useCurrentFn(() => {
-    return editor_mode?.mode || "";
-  });
-
   // ========== 编辑器核心函数 ==========
 
   /**
@@ -393,8 +382,6 @@ export const CodeEditor: FC = () => {
       printe,
       // HandlerDeps
       open,
-      getIndent,
-      getEditorMode,
       setLint,
     });
 
@@ -412,8 +399,7 @@ export const CodeEditor: FC = () => {
       // 新的简洁接口
       open,
 
-      // Table handler (editor_table.ts)
-      import: handler.importFromTable,
+      // 确认保存 (editor_ui.ts)
       confirm: (keep?: boolean) => {
         handleConfirm(keep);
       },

@@ -7,7 +7,6 @@ import { towerService, type TowerData } from "../towerService";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import { FileHandler } from "@/fs/FileHandler";
 import { MemoryFileSystem } from "@test/utils/MemoryFileSystem";
-import { encode64 } from "@/utils/encoding";
 import { serializeToJsDataFile } from "@/utils/serialize";
 import { ContentUtils } from "@/fs/ContentUtils";
 import type { Action } from "@/utils/action";
@@ -54,11 +53,10 @@ describe("towerService", () => {
       "data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d",
       towerData
     );
-    const encoded = encode64(content);
     const path = "project/data.js";
 
-    // 设置文件内容
-    memoryFs.setFile(path, encoded);
+    // 设置文件内容（直接存储原始内容，不需要 base64 编码）
+    memoryFs.setFile(path, content);
 
     // 创建 FileHandler 并加载
     const handler = new FileHandler(path, memoryFs.createFsInterface());
@@ -306,8 +304,7 @@ describe("towerService", () => {
         "data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d",
         newData
       );
-      const encoded = encode64(content);
-      memoryFs.setFile("project/data.js", encoded);
+      memoryFs.setFile("project/data.js", content);
 
       await towerService.refetch();
 

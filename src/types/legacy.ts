@@ -5,9 +5,19 @@
 
 // ============== Editor Blockly ==============
 
+/** Blockly 编辑器回调接口 */
+export interface EditorBlocklyCallbacks {
+  /** 确认回调，接收已解析的值 */
+  onConfirm: (value: unknown) => void;
+}
+
 /** Blockly 编辑器接口 */
 export interface EditorBlockly {
-  import: (guid: string, options: { type?: string }) => void;
+  import: (
+    initialValue: unknown,
+    options: { type?: string },
+    callbacks: EditorBlocklyCallbacks
+  ) => void;
   confirm?: (apply?: boolean) => void;
   parse?: () => void;
   cancel?: () => void;
@@ -47,11 +57,6 @@ export interface EditorMulti {
     initialValue: string,
     config: EditorMultiOpenConfig,
     callbacks: EditorMultiOpenCallbacks,
-  ) => void;
-  /** Legacy 导入接口 */
-  import: (
-    guid: string,
-    options: { lint?: boolean; string?: boolean; template?: string; preview?: boolean },
   ) => void;
 }
 

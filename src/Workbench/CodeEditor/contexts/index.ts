@@ -8,7 +8,6 @@ export type {
   EditContext,
   EditorConfig,
   CodeEditorAPI,
-  ImportArgs,
   MultiLineArgs,
   MultiLineCallback,
   OpenConfig,

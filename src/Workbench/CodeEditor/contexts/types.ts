@@ -65,20 +65,6 @@ export interface CodeEditorAPI {
 }
 
 /**
- * 表格导入参数
- */
-export interface ImportArgs {
-  /** 是否启用语法检查 */
-  lint?: boolean;
-  /** 是否为字符串模式 */
-  string?: boolean;
-  /** 默认模板 */
-  template?: string;
-  /** 预览数据 */
-  preview?: unknown;
-}
-
-/**
  * 多行编辑参数
  */
 export interface MultiLineArgs {
