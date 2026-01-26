@@ -9,6 +9,7 @@
 
 import { signal } from "alien-signals";
 import { waitUntil } from "@/utils/base/signal";
+import type { ReadonlySignal } from "./interfaces";
 
 /**
  * PersistExecutor 的状态
@@ -17,11 +18,6 @@ export type ExecutorStatus =
   | { status: "idle" } // 空闲，无任务
   | { status: "executing"; pending: number } // 执行中，pending = 队列中待执行的数量
   | { status: "error"; error: Error; pending: number }; // 最后一次执行失败
-
-/**
- * ReadonlySignal 类型（函数式）
- */
-export type ReadonlySignal<T> = () => T;
 
 export class PersistExecutor {
   private pendingCount = 0; // 待执行任务数量

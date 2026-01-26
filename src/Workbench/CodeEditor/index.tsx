@@ -1,5 +1,6 @@
 import { useEditorInitialized } from "@/stores/EditorStore";
 import { useCurrentFn } from "@/hooks/useCurrentFn";
+import { useConfigItem } from "@/stores/useEditorConfig";
 import { useState, useCallback, type FC, useRef } from "react";
 import CodeMirror from "codemirror";
 import { JSHINT } from "jshint";
@@ -24,7 +25,7 @@ import { isString } from "es-toolkit";
 export const CodeEditor: FC = () => {
   // ========== React State ==========
   const [visible, setVisible] = useState(false);
-  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const [fontSize, setFontSize] = useConfigItem(FONT_SIZE_CONFIG_KEY, DEFAULT_FONT_SIZE);
   const [fontBold, setFontBold] = useState(false);
   const [lintEnabled, setLintEnabled] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -153,7 +154,6 @@ export const CodeEditor: FC = () => {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = Number(e.target.value);
       setFontSize(value);
-      editor?.config?.set?.(FONT_SIZE_CONFIG_KEY, value);
       if (codeEditorRef.current) {
         const wrapper = codeEditorRef.current.getWrapperElement();
         if (wrapper) {
@@ -162,7 +162,7 @@ export const CodeEditor: FC = () => {
         }
       }
     },
-    [fontBold]
+    [fontBold, setFontSize]
   );
 
   const handleFontBoldChange = useCallback(
@@ -247,12 +247,6 @@ export const CodeEditor: FC = () => {
   useEditorInitialized(() => {
     if (!textareaRef.current) return;
 
-    // 从配置加载字体大小
-    const savedFontSize =
-      editor?.config?.get?.(FONT_SIZE_CONFIG_KEY, DEFAULT_FONT_SIZE) ??
-      DEFAULT_FONT_SIZE;
-    setFontSize(savedFontSize);
-
     // 创建 extraKeys 配置
     const extraKeys: CodeMirror.KeyMap = {
       "Ctrl-/": (cm) => {
@@ -286,7 +280,7 @@ export const CodeEditor: FC = () => {
     // 应用保存的字体大小
     const wrapper = codeEditor.getWrapperElement();
     if (wrapper) {
-      wrapper.style.fontSize = `${savedFontSize}px`;
+      wrapper.style.fontSize = `${fontSize}px`;
     }
 
     // 创建 Tern Server
