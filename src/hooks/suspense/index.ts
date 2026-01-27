@@ -13,4 +13,5 @@ export { useCommonEventDataSuspense } from "./useCommonEventDataSuspense";
 export { useTableMetaSuspense } from "./useTableMetaSuspense";
 export { useLocTableMetaSuspense } from "./useLocTableMetaSuspense";
 export { useEditorReadySuspense } from "./useEditorReadySuspense";
+export { useTernDefsSuspense } from "./useTernDefsSuspense";
 export { useDataSuspense } from "./useDataSuspense";

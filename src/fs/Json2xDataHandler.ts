@@ -12,6 +12,7 @@
 import { DataHandler } from "./DataHandler";
 import type { FileHandler } from "./FileHandler";
 import { serializeToJsDataFile } from "@/utils/serialize";
+import JSON5 from "json5";
 
 /**
  * Json2xDataHandler - 通用 JSON 数据处理器
@@ -46,8 +47,13 @@ export class Json2xDataHandler<T> extends DataHandler<T> {
         jsonStr = jsonStr.substring(prefix.length).trim();
       }
 
+      // 移除可能的结尾分号
+      if (jsonStr.endsWith(";")) {
+        jsonStr = jsonStr.slice(0, -1).trim();
+      }
+
       // 解析 JSON
-      return JSON.parse(jsonStr) as T;
+      return JSON5.parse(jsonStr) as T;
     } catch (err) {
       throw new Error(
         `Failed to parse JSON data file: ${(err as Error).message}`,

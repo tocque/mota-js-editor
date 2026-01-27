@@ -67,7 +67,8 @@ export const setupEditor = once(async () => {
     'libs/thirdparty/zip.min.js',
     // Legacy Blockly Converter 已移除
     // '_server/blockly/Converter.bundle.min.js',
-    '_server/CodeMirror/defs.js',
+    // Tern defs.js 已改为通过 FileHandlerManager 加载
+    // 由 TernServerInitializer 组件使用 useTernDefsSuspense 获取
     '_server/thirdparty/color.all.min.js',
     '_server/thirdparty/caret-position.js',
     '_server/thirdparty/jsColor.js'

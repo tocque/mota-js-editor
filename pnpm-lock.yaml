@@ -56,6 +56,9 @@ importers:
       jshint:
         specifier: ^2.13.6
         version: 2.13.6
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       localforage:
         specifier: ^1.10.0
         version: 1.10.0

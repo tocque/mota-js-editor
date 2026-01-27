@@ -1,7 +1,7 @@
 import { useEditorInitialized } from "@/stores/EditorStore";
 import { useCurrentFn } from "@/hooks/useCurrentFn";
 import { useConfigItem } from "@/stores/useEditorConfig";
-import { useState, useCallback, type FC, useRef } from "react";
+import { useState, useCallback, type FC, useRef, Suspense } from "react";
 import CodeMirror from "codemirror";
 import { JSHINT } from "jshint";
 import beautifier from "js-beautify";
@@ -15,12 +15,12 @@ import {
   PLUGINS_URL,
   JSHINT_OPTIONS,
 } from "./config/commands";
-import { createTernServer, type TernServerInstance } from "./utils/createTernServer";
-import { setupEditorEvents } from "./handlers/editorEvents";
+import type { TernServerInstance } from "./utils/createTernServer";
 import { createHandler, type EditContext, type EditorConfig, type Handler } from "./contexts";
 import type { CodeMirrorInstance, EditorMultiApi } from "./types";
 import type { OpenConfig, OpenCallbacks } from "./contexts";
 import { isString } from "es-toolkit";
+import { TernServerInitializer } from "./components";
 
 export const CodeEditor: FC = () => {
   // ========== React State ==========
@@ -29,6 +29,7 @@ export const CodeEditor: FC = () => {
   const [fontBold, setFontBold] = useState(false);
   const [lintEnabled, setLintEnabled] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [codeMirrorReady, setCodeMirrorReady] = useState(false);
 
   // ========== Refs ==========
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -243,6 +244,9 @@ export const CodeEditor: FC = () => {
     }
   }, []);
 
+  // 获取自动补全状态（供 TernServerInitializer 使用）
+  const getAutocomplete = useCallback(() => stateRef.current.lintAutocomplete, []);
+
   // ========== 初始化 ==========
   useEditorInitialized(() => {
     if (!textareaRef.current) return;
@@ -283,17 +287,11 @@ export const CodeEditor: FC = () => {
       wrapper.style.fontSize = `${fontSize}px`;
     }
 
-    // 创建 Tern Server
-    const ternServer = createTernServer({
-      ternDefs: terndefs_f6783a0a_522d_417e_8407_94c67b692e50,
-      core,
-      functions: functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a,
-      dataComment: data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc,
-    });
-    ternServerRef.current = ternServer;
+    // 标记 CodeMirror 已就绪，触发 TernServerInitializer 渲染
+    setCodeMirrorReady(true);
 
-    // 设置编辑器事件
-    setupEditorEvents(codeEditor, ternServer, () => stateRef.current.lintAutocomplete);
+    // 注意：TernServer 的创建已移至 TernServerInitializer 组件
+    // 该组件使用 Suspense 实现细粒度响应，在数据未就绪时挂起
 
     // ========== 创建 Handler ==========
 
@@ -472,6 +470,16 @@ export const CodeEditor: FC = () => {
         name="multiLineCode"
         defaultValue={""}
       />
+      {/* TernServer 初始化组件（Suspense 包裹） */}
+      {codeMirrorReady && codeEditorRef.current && (
+        <Suspense fallback={null}>
+          <TernServerInitializer
+            codeEditor={codeEditorRef.current}
+            ref={ternServerRef}
+            getAutocomplete={getAutocomplete}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
