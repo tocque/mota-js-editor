@@ -38,7 +38,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         {} as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -55,7 +54,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _string: true } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -76,7 +74,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _string: false } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -96,7 +93,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _template: 'default template' } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -116,7 +112,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _lint: true, _preview: true } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -139,7 +134,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _string: true } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -159,7 +153,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _string: false } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -179,7 +172,6 @@ describe('openExternalEditor', () => {
         'testField',
         'textarea',
         { _string: false } as FieldConfig,
-        'test-guid',
         getValue,
         setValue,
       );
@@ -207,7 +199,6 @@ describe('openExternalEditor', () => {
           'testField',
           'textarea',
           {} as FieldConfig,
-          'test-guid',
           getValue,
           setValue,
         );

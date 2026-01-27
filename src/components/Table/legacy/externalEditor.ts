@@ -5,7 +5,7 @@
  * 根据字段类型调用对应的外部编辑器
  */
 
-import type { EditorBlockly, EditorMulti, Editor, OpenColorPickerFunc } from '@/types';
+import type { EditorBlockly, EditorMulti, Editor } from '@/types';
 import type { FieldConfig, FieldType } from '../types';
 
 /**
@@ -30,27 +30,18 @@ function getEditor(): Editor | null {
 }
 
 /**
- * 获取全局 openColorPicker 函数
- */
-function getOpenColorPicker(): OpenColorPickerFunc | null {
-  return typeof window !== 'undefined' ? window.openColorPicker ?? null : null;
-}
-
-/**
  * 打开外部编辑器
  *
  * 根据字段类型调用对应的外部编辑器：
  * - event: 调用 editor_blockly.import
  * - textarea: 调用 editor_multi.open
  * - material: 调用 editor.uievent.selectMaterial
- * - color: 调用 openColorPicker
  * - point: 调用 editor.uievent.selectPoint
  * - popCheckboxSet: 调用 editor.uievent.popCheckboxSet
  *
  * @param field - 字段路径
  * @param type - 字段类型
  * @param config - 字段配置
- * @param guid - DOM 元素 ID，用于外部编辑器定位
  * @param getValue - 获取字段值的函数
  * @param setValue - 设置字段值的函数
  */
@@ -58,7 +49,6 @@ export function openExternalEditor(
   field: string,
   type: FieldType | undefined,
   config: FieldConfig,
-  guid: string,
   getValue: (field: string) => unknown,
   setValue: (field: string, value: unknown) => void,
 ): void {
@@ -175,37 +165,6 @@ export function openExternalEditor(
         );
       } else {
         console.warn('editor.uievent not available');
-      }
-      break;
-    }
-
-    case 'color': {
-      const openColorPicker = getOpenColorPicker();
-      if (openColorPicker) {
-        // 通过 guid 获取元素位置
-        const element = document.getElementById(guid);
-        const rect = element?.getBoundingClientRect();
-        const x = rect?.x ?? 0;
-        const y = rect ? rect.y + rect.height : 0;
-
-        // 设置 colorPicker 的初始值
-        const currentValue = getValue(field);
-        if (currentValue != null && typeof document !== 'undefined') {
-          const str = String(currentValue).replace(/[^\d.,]/g, '');
-          if (/^[0-9 ]+,[0-9 ]+,[0-9 ]+(,[0-9. ]+)?$/.test(str)) {
-            const colorPicker = document.getElementById('colorPicker') as HTMLInputElement | null;
-            if (colorPicker) {
-              colorPicker.value = str;
-            }
-          }
-        }
-
-        openColorPicker(x, y, (value: string) => {
-          const cleanValue = value.replace(/[^\d.,]/g, '');
-          setValue(field, JSON.parse('[' + cleanValue + ']'));
-        });
-      } else {
-        console.warn('openColorPicker not available');
       }
       break;
     }

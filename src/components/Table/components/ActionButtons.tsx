@@ -5,13 +5,13 @@ import type { ActionButtonsProps, FieldType } from '../types';
  * 判断是否应该显示编辑按钮
  * 
  * 根据字段类型决定是否显示编辑按钮：
- * - select、checkbox、checkboxSet、disable 类型不显示编辑按钮
+ * - select、checkbox、checkboxSet、color、disable 类型不显示编辑按钮
  * - popCheckboxSet 显示"多选框编辑"按钮
  * - 其他类型显示"编辑"按钮
  */
 const shouldShowEditButton = (type?: FieldType): boolean => {
   if (!type) return true;
-  return type !== 'select' && type !== 'checkbox' && type !== 'checkboxSet' && type !== 'disable';
+  return type !== 'select' && type !== 'checkbox' && type !== 'checkboxSet' && type !== 'color' && type !== 'disable';
 };
 
 /**

@@ -7,21 +7,6 @@
 import type { CommentObject, FieldArgs, FieldConfig, TableNode } from '../types';
 import { getShortField } from '@/utils/fieldPath';
 
-let nodeIdCounter = 0;
-
-/**
- * Generate a unique node ID.
- */
-function generateNodeId(): string {
-  return `table-node-${++nodeIdCounter}`;
-}
-
-/**
- * Reset the node ID counter (useful for testing).
- */
-export function resetNodeIdCounter(): void {
-  nodeIdCounter = 0;
-}
 
 /**
  * Default field configuration object.
@@ -235,7 +220,6 @@ export function buildTableTree(
         );
         
         nodes.push({
-          id: generateNodeId(),
           field,
           shortField,
           isGap: true,
@@ -247,7 +231,6 @@ export function buildTableTree(
       } else {
         // Leaf node: create editable row
         nodes.push({
-          id: generateNodeId(),
           field,
           shortField,
           isGap: false,

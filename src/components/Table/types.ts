@@ -97,8 +97,6 @@ export interface CommentObject {
 
 /** Table node representing a row in the table tree */
 export interface TableNode {
-  /** Unique identifier for this node */
-  id: string;
   /** Field path, e.g., "['main']['floorIds']" */
   field: string;
   /** Short field name (last segment of path) */
@@ -142,7 +140,7 @@ export interface TableProps {
    * 当字段类型需要外部编辑器（如 event、textarea、material 等）时调用
    * 如果未提供，Table 会使用内置的外部编辑器集成
    */
-  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
   /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除，受控属性 */
   editMode?: EditMode;
 }
@@ -195,7 +193,7 @@ export interface TableContextValue {
   /** Value change callback */
   onValueChange: (field: string, value: unknown) => void;
   /** Add item callback */
-  onAddItem: (field: string, id: string) => void;
+  onAddItem: (field: string, name: string) => void;
   /** Delete item callback */
   onDeleteItem: (field: string) => void;
 }

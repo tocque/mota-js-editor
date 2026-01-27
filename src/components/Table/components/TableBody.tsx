@@ -45,7 +45,7 @@ function renderNode(node: TableNode): React.ReactNode {
   if (node.isGap) {
     // 分隔行：渲染 GapRow，子节点作为 children
     return (
-      <GapRow key={node.id} field={node.field} shortField={node.shortField}>
+      <GapRow key={node.field} field={node.field} shortField={node.shortField}>
         {node.children && renderNodes(node.children)}
       </GapRow>
     );
@@ -53,5 +53,5 @@ function renderNode(node: TableNode): React.ReactNode {
 
   // 叶节点：直接渲染 TableRow，传递 node prop
   // TableRow 内部直接访问 DataStore 获取回调
-  return <TableRow key={node.id} node={node} />;
+  return <TableRow key={node.field} node={node} />;
 }

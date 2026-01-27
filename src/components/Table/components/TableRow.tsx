@@ -6,9 +6,9 @@ import {
   SelectInput,
   CheckboxInput,
   CheckboxSet,
+  ColorInput,
 } from './inputs';
 import { checkRange, getByFieldPath, getParentFieldPath } from '../utils';
-import { generateGuid } from '@/utils/json';
 import { DataStore } from '../stores';
 import { openExternalEditor } from '../legacy/externalEditor';
 import { noop } from '@/utils/empty';
@@ -67,6 +67,14 @@ const renderInput = (
       );
     }
 
+    case 'color':
+      return (
+        <ColorInput
+          value={value}
+          onChange={onChange}
+        />
+      );
+
     case 'disable':
       return (
         <TextareaInput
@@ -78,7 +86,7 @@ const renderInput = (
         />
       );
 
-    // textarea, event, material, color, point, popCheckboxSet 都使用 TextareaInput
+    // textarea, event, material, point, popCheckboxSet 都使用 TextareaInput
     // 它们的特殊编辑功能通过编辑按钮触发
     default:
       return (
@@ -133,9 +141,6 @@ export const TableRow: FC<TableRowProps> = (props) => {
 
   const type = config._type;
 
-  // 生成唯一 id，用于外部编辑器定位
-  const guid = useMemo(() => generateGuid(), []);
-
   // 生成用于 data-field 属性的值
   // "['main']['floorIds']" => "main-floorIds"
   const dataField = useMemo(
@@ -178,7 +183,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
   const handleOpenExternalEditor = useCallback(() => {
     // 检查是否有外部提供的回调（非 noop）
     if (onOpenExternalEditor !== noop) {
-      onOpenExternalEditor(field, config._type, config, guid);
+      onOpenExternalEditor(field, config._type, config);
     } else {
       // 使用内置的外部编辑器集成
       const getValue = (f: string) => getByFieldPath(data, f);
@@ -191,9 +196,9 @@ export const TableRow: FC<TableRowProps> = (props) => {
         }
         onValueChange(f, newValue);
       };
-      openExternalEditor(field, config._type, config, guid, getValue, setValue);
+      openExternalEditor(field, config._type, config, getValue, setValue);
     }
-  }, [field, config, guid, data, onValueChange, onOpenExternalEditor]);
+  }, [field, config, data, onValueChange, onOpenExternalEditor]);
 
   // 双击处理 - 根据 editMode 调用不同的回调
   const handleDoubleClick = useCallback(() => {
@@ -203,11 +208,11 @@ export const TableRow: FC<TableRowProps> = (props) => {
       // 正常编辑模式：打开外部编辑器
       handleOpenExternalEditor();
     } else if (mode === 'add') {
-      // 添加模式：获取父路径，提示输入新 ID
+      // 添加模式：获取父路径，提示输入新名称
       const parentPath = getParentFieldPath(field);
-      const id = prompt('请输入新项的 ID');
-      if (id) {
-        onAddItem(parentPath, id);
+      const name = prompt('请输入新项的名称');
+      if (name) {
+        onAddItem(parentPath, name);
       }
     } else if (mode === 'delete') {
       // 删除模式：检查是否允许删除（null 验证）
@@ -262,7 +267,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
   }, [handleDoubleClick]);
 
   return (
-    <tr id={guid} data-field={dataField} onClick={handleClick}>
+    <tr data-field={dataField} onClick={handleClick}>
       {/* 字段名称列 */}
       <td title={field}>{shortField}</td>
 

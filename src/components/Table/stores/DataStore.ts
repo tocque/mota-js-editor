@@ -25,8 +25,8 @@ export interface DataStoreArgument {
   commentObj: CommentObject;
   /** 统一的变更回调 */
   onChange?: (action: TableAction) => void;
-  /** 打开外部编辑器回调 - 用于外部编辑器集成，guid 用于外部编辑器定位 DOM 元素 */
-  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 打开外部编辑器回调 - 用于外部编辑器集成 */
+  onOpenExternalEditor?: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
   /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
   editMode?: EditMode;
 }
@@ -41,11 +41,11 @@ export interface DataStoreValue {
   /** 值变更回调，供子组件使用 */
   onValueChange: (field: string, value: unknown) => void;
   /** 添加项回调，供子组件使用 */
-  onAddItem: (field: string, id: string) => void;
+  onAddItem: (field: string, name: string) => void;
   /** 删除项回调，供子组件使用 */
   onDeleteItem: (field: string) => void;
-  /** 打开外部编辑器回调，供子组件使用，guid 用于外部编辑器定位 DOM 元素 */
-  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 打开外部编辑器回调，供子组件使用 */
+  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
   /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
   editMode: EditMode;
 }
@@ -85,21 +85,21 @@ function useDataStore(argument: DataStoreArgument): DataStoreValue {
   }, [onChange]);
 
   // 添加项回调 - 内部处理验证逻辑
-  const handleAddItem = useCallback((parentField: string, id: string) => {
-    // 验证 ID
+  const handleAddItem = useCallback((parentField: string, name: string) => {
+    // 验证名称
     let existingKeys: string[] = [];
     const parentObj = getByFieldPath(data, parentField);
     if (parentObj && typeof parentObj === 'object') {
       existingKeys = Object.keys(parentObj as Record<string, unknown>);
     }
-    const validation = validateId(id, existingKeys, false);
+    const validation = validateId(name, existingKeys, false);
     if (!validation.valid) {
       const printe = getPrinte();
-      printe?.(validation.error || 'ID 无效');
+      printe?.(validation.error || '名称无效');
       return;
     }
 
-    const newField = parentField + "['" + id + "']";
+    const newField = parentField + "['" + name + "']";
     onChange?.(['add', newField, null]);
     const printf = getPrintf();
     printf?.('添加成功，刷新后生效。');

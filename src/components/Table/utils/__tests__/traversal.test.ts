@@ -4,19 +4,14 @@
  * 测试表格树构建工具函数
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   buildTableTree,
   defaultCobj,
-  resetNodeIdCounter,
 } from '../traversal';
 import type { CommentObject, FieldArgs } from '../../types';
 
 describe('traversal', () => {
-  beforeEach(() => {
-    resetNodeIdCounter();
-  });
-
   describe('defaultCobj', () => {
     it('应该有默认的 _type 为 textarea', () => {
       expect(defaultCobj._type).toBe('textarea');
@@ -254,7 +249,7 @@ describe('traversal', () => {
       expect(gapFields).toHaveLength(0);
     });
 
-    it('应该为每个节点生成唯一 ID', () => {
+    it('应该使用 field 作为节点唯一标识', () => {
       const data = { a: 1, b: 2, c: 3 };
       const commentObj: CommentObject = {
         _data: {
@@ -266,9 +261,10 @@ describe('traversal', () => {
 
       const { rootNodes } = buildTableTree(data, commentObj);
 
-      const ids = rootNodes.map(n => n.id);
-      const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(ids.length);
+      const fields = rootNodes.map(n => n.field);
+      const uniqueFields = new Set(fields);
+      expect(uniqueFields.size).toBe(fields.length);
+      expect(fields).toEqual(["['a']", "['b']", "['c']"]);
     });
 
     it('应该正确处理深层嵌套结构', () => {

@@ -8,11 +8,11 @@ export interface UseTableCallbacksReturn {
   /** 值变更回调 */
   onValueChange: (field: string, value: unknown) => void;
   /** 添加项回调 */
-  onAddItem: (field: string, id: string) => void;
+  onAddItem: (field: string, name: string) => void;
   /** 删除项回调 */
   onDeleteItem: (field: string) => void;
-  /** 打开外部编辑器回调，guid 用于外部编辑器定位 DOM 元素 */
-  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig, guid: string) => void;
+  /** 打开外部编辑器回调 */
+  onOpenExternalEditor: (field: string, type: FieldType | undefined, config: FieldConfig) => void;
   /** 编辑模式：'change' 编辑 | 'add' 添加 | 'delete' 删除 */
   editMode: EditMode;
 }
@@ -38,7 +38,7 @@ export interface UseTableCallbacksReturn {
  * onDeleteItem("['enemies']['oldEnemy']");
  *
  * // 打开外部编辑器
- * onOpenExternalEditor("['main']['events']", 'event', config, 'guid-123');
+ * onOpenExternalEditor("['main']['events']", 'event', config);
  *
  * // 检查编辑模式
  * if (editMode === 'change') { ... }
