@@ -2,6 +2,8 @@ import { clamp } from "es-toolkit";
 import { useCallback, useEffect, useRef, useState, type FC } from "react";
 import { fs } from "@/services/fs";
 import { useCurrentFloorId } from "@/stores/editorState";
+import Awesomplete from "awesomplete";
+import "awesomplete/awesomplete.css";
 
 interface AnimateCache {
   parsed: Record<string, unknown>;
@@ -146,16 +148,14 @@ export const AnimatePreview: FC<AnimatePreviewProps> = ({ fileKey, displayName, 
 
   useEffect(() => {
     if (!open) return;
+    if (typeof core === "undefined") return;
     const audios = Object.keys(core.material.sounds).sort().join(",");
     const inputs = document.querySelectorAll<HTMLInputElement>(`[data-audio-for="${displayName}"]`);
-    const AwesompleteClass = window.Awesomplete as undefined | (new (input: HTMLInputElement) => void);
     inputs.forEach((input) => {
       if (input.getAttribute("data-awesomplete") === "1") return;
       input.setAttribute("data-awesomplete", "1");
       input.setAttribute("data-list", audios);
-      if (AwesompleteClass) {
-        new AwesompleteClass(input);
-      }
+      new Awesomplete(input);
     });
   }, [displayName, open, soundRows]);
 

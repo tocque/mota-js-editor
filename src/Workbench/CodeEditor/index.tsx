@@ -3,6 +3,8 @@ import { useCurrentFn } from "@/hooks/useCurrentFn";
 import { useConfigItem } from "@/stores/useEditorConfig";
 import { useState, useCallback, type FC, useRef, Suspense } from "react";
 import CodeMirror from "codemirror";
+// CodeMirror addon 和 CSS 导入
+import "./setup";
 import { JSHINT } from "jshint";
 import beautifier from "js-beautify";
 import {

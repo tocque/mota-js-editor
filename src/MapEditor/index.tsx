@@ -1,8 +1,14 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type FC, type ChangeEvent } from "react";
+import { PanelStore, type PanelId } from "@/stores/PanelStore";
 
 export const MapEditor: FC = () => {
   const [tipMessage, setTipMessage] = useState('');
   const [tipClass, setTipClass] = useState('');
+  const { activePanel, setActivePanel } = PanelStore.useStore();
+
+  const handlePanelChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setActivePanel(e.target.value as PanelId);
+  };
 
   const print = (msg: string, cls: string) => {
     if (msg === '') {
@@ -42,7 +48,12 @@ export const MapEditor: FC = () => {
           <div id="tip">
             {tipMessage && <p className={tipClass}>{tipMessage}</p>}
           </div>
-          <select id="editModeSelect" style={{ fontSize: 12 }}>
+          <select
+            id="editModeSelect"
+            style={{ fontSize: 12 }}
+            value={activePanel}
+            onChange={handlePanelChange}
+          >
             <option value="map">地图编辑(Z)</option>
             <option value="loc">地图选点(X)</option>
             <option value="enemyitem">图块属性(C)</option>

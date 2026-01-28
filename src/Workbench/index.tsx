@@ -1,4 +1,5 @@
 import type { FC } from "react";
+import { PanelSlot } from "./components/PanelSlot";
 import { MapPanel } from "./MapPanel";
 import { AppendPicPanel } from "./AppendPicPanel";
 import { LocPanel } from "./LocPanel";
@@ -14,21 +15,38 @@ import { CodeEditor } from "./CodeEditor";
 import { MapEditor } from "@/MapEditor";
 
 export const Workbench: FC = () => {
-
   return (
     <div className="main">
-      <MapPanel />
-      <AppendPicPanel />
-      <LocPanel />
-      <PrefabPanel />
-      <FloorPanel />
-      <TowerPanel />
+      <PanelSlot panelId="map">
+        <MapPanel />
+      </PanelSlot>
+      <PanelSlot panelId="appendpic">
+        <AppendPicPanel />
+      </PanelSlot>
+      <PanelSlot panelId="loc">
+        <LocPanel />
+      </PanelSlot>
+      <PanelSlot panelId="enemyitem">
+        <PrefabPanel />
+      </PanelSlot>
+      <PanelSlot panelId="floor">
+        <FloorPanel />
+      </PanelSlot>
+      <PanelSlot panelId="tower">
+        <TowerPanel />
+      </PanelSlot>
       <EventsEditor />
       <ColorPanel />
       <CodeEditor />
-      <FunctionsPanel />
-      <CommonEventPanel />
-      <PluginPanel />
+      <PanelSlot panelId="functions">
+        <FunctionsPanel />
+      </PanelSlot>
+      <PanelSlot panelId="commonevent">
+        <CommonEventPanel />
+      </PanelSlot>
+      <PanelSlot panelId="plugins">
+        <PluginPanel />
+      </PanelSlot>
       <MapEditor />
     </div>
   );

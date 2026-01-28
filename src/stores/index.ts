@@ -1,10 +1,12 @@
 import { mergeStores } from "@/utils/store/store";
 import { GameDataStore } from "./GameDataStore";
 import { EditorStore } from "./EditorStore";
+import { PanelStore } from "./PanelStore";
 
 export const GlobalStore = mergeStores([
   EditorStore,
   GameDataStore,
+  PanelStore,
 ]);
 
 // 导出独立的状态管理

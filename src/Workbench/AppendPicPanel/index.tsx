@@ -198,7 +198,7 @@ export const AppendPicPanel: FC = () => {
   });
 
   return (
-    <div id="left1" className="leftTab" style={{ zIndex: -1, opacity: 0 }}>
+    <div id="left1" className="leftTab">
       {/* appendpic */}
       <h3 className="leftTabHeader">追加素材</h3>
       <div className="leftTabContent">

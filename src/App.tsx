@@ -1,5 +1,4 @@
 import { useEffect, type FC } from "react";
-import { setupEditor } from "./setupEditor";
 import { Workbench } from "./Workbench";
 import { ModalsProvider } from "./Workbench/modals";
 import { EditorStore } from "./stores/EditorStore";
@@ -10,10 +9,9 @@ const App: FC = () => {
   const { setEditorInitialized } = EditorStore.useStore();
 
   useEffect(() => {
-    setupEditor().then(() => {
-      editorHandler.markReady();
-      setEditorInitialized(true);
-    });
+    // setupEditor 已移除，直接标记就绪
+    // editorHandler.markReady();
+    // setEditorInitialized(true);
   }, []);
 
   return (

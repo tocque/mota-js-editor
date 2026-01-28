@@ -16,8 +16,6 @@ export interface LeftTabProps {
   actions?: ReactNode;
   /** 面板内容 */
   children: ReactNode;
-  /** 是否显示（控制 z-index 和 opacity） */
-  visible?: boolean;
   /** 是否加载中 */
   loading?: boolean;
   /** 错误信息 */
@@ -30,7 +28,6 @@ export const LeftTab: FC<LeftTabProps> = (props) => {
     title,
     actions,
     children,
-    visible = false,
     loading = false,
     error = null,
   } = props;
@@ -47,11 +44,7 @@ export const LeftTab: FC<LeftTabProps> = (props) => {
   };
 
   return (
-    <div
-      id={id}
-      className="leftTab"
-      style={visible ? undefined : { zIndex: -1, opacity: 0 }}
-    >
+    <div id={id} className="leftTab">
       <h3 className="leftTabHeader">
         {title}
         {actions && <>&nbsp;&nbsp;{actions}</>}

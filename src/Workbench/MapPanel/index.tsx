@@ -200,7 +200,7 @@ export const MapPanel: FC = () => {
   };
 
   return (
-    <div id="left" style={{ zIndex: -1, opacity: 0 }}>
+    <div id="left" className="leftTab">
       {/* map */}
       <div id="arrEditor">
         <table className="col" id="arrColMark" />

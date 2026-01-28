@@ -25,8 +25,6 @@ export interface ContentLeftTabProps {
   actions?: ReactNode;
   /** 面板内容（使用 Suspense hooks） */
   children: ReactNode;
-  /** 是否显示（控制 z-index 和 opacity） */
-  visible?: boolean;
 
   /**
    * 自定义恢复 UI（核心 API）
@@ -86,7 +84,6 @@ export const ContentLeftTab: FC<ContentLeftTabProps> = (props) => {
     title,
     actions,
     children,
-    visible = false,
     recoveryUI,
     loadingUI,
     autoRetry,
@@ -102,11 +99,7 @@ export const ContentLeftTab: FC<ContentLeftTabProps> = (props) => {
   };
 
   return (
-    <div
-      id={id}
-      className="leftTab"
-      style={visible ? undefined : { zIndex: -1, opacity: 0 }}
-    >
+    <div id={id} className="leftTab">
       <h3 className="leftTabHeader">
         {title}
         {actions && <>&nbsp;&nbsp;{actions}</>}
