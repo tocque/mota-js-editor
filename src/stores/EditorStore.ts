@@ -1,5 +1,6 @@
 import { createStore } from "@/utils/store/store";
 import { useEffect, useState } from "react";
+import { useConfigItem } from "./useEditorConfig";
 import type { Editor } from "@/types";
 
 const useEditorStore = () => {
@@ -7,11 +8,15 @@ const useEditorStore = () => {
 
   const [uiRatio, setUIRatio] = useState(1);
 
+  const [theme, setTheme] = useConfigItem("theme", "editor_color_light");
+
   return {
     editorInitialized,
     setEditorInitialized,
     uiRatio,
     setUIRatio,
+    theme,
+    setTheme,
   }
 };
 

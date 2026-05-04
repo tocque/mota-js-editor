@@ -239,15 +239,12 @@ body {
     overflow: hidden;
 }
 
-#iconImages img {
-    position: absolute;
-}
 
 .gameCanvas {
     position: absolute;
 }
 
-#dataSelection, .appendSelection {
+.dataSelection, .appendSelection {
     position: absolute;
     /* top:0;
     left:320px; */

@@ -12,3 +12,4 @@ export * from "./Json2xDataHandler";
 export * from "./JsonDataHandler";
 export * from "./PersistExecutor";
 export * from "./PersistenceMonitor";
+export * from "./BinaryFileHandler";

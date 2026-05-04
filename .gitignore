@@ -26,3 +26,7 @@ dist-ssr
 public/_server/config.json
 
 tileset-editor
+
+## Panda
+styled-system
+styled-system-studio

@@ -21,6 +21,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@test": path.resolve(__dirname, "./test"),
+      "@styled-system": path.resolve(__dirname, "./styled-system"),
     },
   },
   publicDir: "public",

@@ -1,218 +1,193 @@
-import { useEffect, useState, type FC, type ChangeEvent } from "react";
-import { PanelStore, type PanelId } from "@/stores/PanelStore";
+/**
+ * MapEditor - 地图编辑器主组件
+ *
+ * 整合所有子组件，提供完整的地图编辑功能
+ */
 
-export const MapEditor: FC = () => {
-  const [tipMessage, setTipMessage] = useState('');
-  const [tipClass, setTipClass] = useState('');
-  const { activePanel, setActivePanel } = PanelStore.useStore();
+import { useCallback, useEffect, useState, Suspense, type FC } from "react";
+import { MapEditorStore } from "./MapEditorStore";
+import { MapCanvas } from "./MapCanvas";
+import { ContextMenu } from "./ContextMenu";
+import { ToolBar } from "./ToolBar";
+import { MaterialPanel } from "./MaterialPanel";
+import { RecentlyUsedPanel } from "./RecentlyUsedPanel";
+import { RowColMarks } from "./RowColMarks";
+import type { SelectedBlock, BlockInfo } from "./MaterialPanel/types";
 
-  const handlePanelChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setActivePanel(e.target.value as PanelId);
-  };
+/** 默认楼层 ID */
+const DEFAULT_FLOOR_ID = "MT0";
 
-  const print = (msg: string, cls: string) => {
-    if (msg === '') {
-      setTipMessage('');
-      setTipClass('');
+/**
+ * 地图编辑器内部组件（需要 Store Provider）
+ */
+const MapEditorInner: FC = () => {
+  const [tipMessage, setTipMessage] = useState("");
+  const [tipClass, setTipClass] = useState("");
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+
+  const store = MapEditorStore.useStore();
+  const { state } = store;
+  const { currentFloorId, selectedBlock } = state;
+
+  // 使用默认楼层 ID
+  const floorId = currentFloorId || DEFAULT_FLOOR_ID;
+
+  // 初始化楼层 ID
+  useEffect(() => {
+    if (!currentFloorId) {
+      store.setCurrentFloorId(DEFAULT_FLOOR_ID);
+    }
+  }, [currentFloorId, store]);
+
+  // 打印函数
+  const print = useCallback((msg: string, cls: string) => {
+    if (msg === "") {
+      setTipMessage("");
+      setTipClass("");
       return;
     }
     setTipMessage(msg);
     setTipClass(cls);
-  }
-
-  useEffect(() => {
-    window.printf = function (msg) {
-        selectBox.isSelected(false);
-        print(msg, 'successText');
-    }
-    window.printe = function (msg) {
-        selectBox.isSelected(false);
-        print(msg, 'warnText');
-    }
-    window.printi = function (msg) {
-        print(msg, 'infoText');
-    }
   }, []);
+
+  // 设置全局打印函数
+  useEffect(() => {
+    window.printf = function (msg: string) {
+      print(msg, "successText");
+    };
+    window.printe = function (msg: unknown) {
+      print(String(msg), "warnText");
+    };
+    window.printi = function (msg: string) {
+      print(msg, "infoText");
+    };
+  }, [print]);
+
+  // 处理素材选中变化
+  const handleSelectedBlockChange = useCallback(
+    (block: SelectedBlock) => {
+      store.setSelectedBlock(block);
+    },
+    [store]
+  );
+
+  // 处理右键菜单显示
+  const handleContextMenu = useCallback((x: number, y: number) => {
+    setContextMenuPos({ x, y });
+    setContextMenuVisible(true);
+  }, []);
+
+  // 关闭右键菜单
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenuVisible(false);
+  }, []);
+
+  // 双击选中素材
+  const handleDoubleClickSelect = useCallback(
+    (block: BlockInfo | 0) => {
+      store.setSelectedBlock(block === 0 ? undefined : block);
+    },
+    [store]
+  );
+
+  // 从右键菜单选中素材
+  const handleSelectBlockFromMenu = useCallback(
+    (block: BlockInfo | 0) => {
+      store.setSelectedBlock(block === 0 ? undefined : block);
+    },
+    [store]
+  );
+
+  // 楼层切换
+  const handleFloorChange = useCallback(
+    (newFloorId: string) => {
+      store.setCurrentFloorId(newFloorId);
+    },
+    [store]
+  );
+
+  // 最近使用面板的选中回调
+  const handleRecentlyUsedSelect = useCallback(
+    (item: { id: string; images: string; x: number; y: number; isTile?: boolean }) => {
+      const block: BlockInfo = {
+        idnum: 0, // TODO: 从实际数据中获取
+        id: item.id,
+        images: item.images,
+        y: item.y,
+        x: item.x,
+        isTile: item.isTile,
+      };
+      store.setSelectedBlock(block);
+    },
+    [store]
+  );
 
   return (
     <>
       <div id="mid">
-        <table className="col" id="mapColMark" />
-        <table className="row" id="mapRowMark" />
-        <div className="map" id="mapEdit">
-          <canvas className="gameCanvas" id="ebm" />
-          <canvas className="gameCanvas" id="efg" />
-          <canvas className="gameCanvas" id="eui" style={{ zIndex: 100 }} />
-        </div>
-        <div className="tools">
-          <div id="tip">
-            {tipMessage && <p className={tipClass}>{tipMessage}</p>}
-          </div>
-          <select
-            id="editModeSelect"
-            style={{ fontSize: 12 }}
-            value={activePanel}
-            onChange={handlePanelChange}
-          >
-            <option value="map">地图编辑(Z)</option>
-            <option value="loc">地图选点(X)</option>
-            <option value="enemyitem">图块属性(C)</option>
-            <option value="floor">楼层属性(V)</option>
-            <option value="tower">全塔属性(B)</option>
-            <option value="functions">脚本编辑(N)</option>
-            <option value="appendpic">追加素材(M)</option>
-            <option value="commonevent">公共事件(,)</option>
-            <option value="plugins">插件编写(.)</option>
-          </select>
-          <span style={{ fontSize: 12 }}>
-            <input
-              type="checkbox"
-              id="showMovable"
-              style={{ marginLeft: 0, marginRight: 2 }}
-            />
-            通行度
-          </span>
-          <select id="editorTheme" style={{ marginLeft: 0, fontSize: 11 }}>
-            <option value="editor_color">默认白</option>
-            <option value="editor_color_dark">夜间黑</option>
-          </select>
-          <br />
-          <span style={{ fontSize: 12 }}>
-            <input
-              type="radio"
-              id="brushMod"
-              name="brushMod"
-              defaultValue="line"
-              defaultChecked
-            />
-            线
-            <input
-              type="radio"
-              id="brushMod2"
-              name="brushMod"
-              defaultValue="rectangle"
-            />
-            矩形
-            <input
-              type="radio"
-              id="brushMod3"
-              name="brushMod"
-              defaultValue="tileset"
-            />
-            tile平铺
-            <input
-              type="radio"
-              id="brushMod4"
-              name="brushMod"
-              defaultValue="fill"
-            />
-            填充
-          </span>
-          <br />
-          <span style={{ fontSize: 12 }}>
-            <input
-              type="radio"
-              id="layerMod2"
-              name="layerMod"
-              defaultValue="bgmap"
-            />
-            背景层
-            <input
-              type="radio"
-              id="layerMod"
-              name="layerMod"
-              defaultValue="map"
-              defaultChecked
-              style={{ marginLeft: 5 }}
-            />
-            事件层
-            <input
-              type="radio"
-              id="layerMod3"
-              name="layerMod"
-              defaultValue="fgmap"
-              style={{ marginLeft: 5 }}
-            />
-            前景层
-          </span>
-          <br />
-          <div id="viewportButtons" style={{ marginBottom: 7 }}>
-            <input type="button" defaultValue="←" />
-            <input type="button" defaultValue="↑" />
-            <input type="button" defaultValue="↓" />
-            <input type="button" defaultValue="→" />
-            <input
-              type="button"
-              id="bigmapBtn"
-              defaultValue="大地图"
-              style={{ marginLeft: 5 }}
-            />
-          </div>
-          <select id="selectFloor" style={{ marginBottom: 5 }} />
-          <input type="button" defaultValue="选层" id="selectFloorBtn" />
-          <input type="button" defaultValue="保存地图" id="saveFloor" />
-          <input
-            type="button"
-            defaultValue="后退"
-            id="undoFloor"
-            style={{ display: "none" }}
+        {/* 行列标记 */}
+        <RowColMarks />
+
+        {/* 地图编辑区 */}
+        <Suspense fallback={<div className="map" id="mapEdit">Loading...</div>}>
+          <MapCanvas
+            floorId={floorId}
+            onContextMenu={handleContextMenu}
+            onDoubleClickSelect={handleDoubleClickSelect}
           />
-          <input type="button" defaultValue="帮助文档" id="openDoc" />
-          <input
-            type="button"
-            defaultValue="前往游戏"
-            onClick={() => window.open('./index.html', '_blank')}
+        </Suspense>
+
+        {/* 工具栏 */}
+        <Suspense fallback={<div className="tools">Loading...</div>}>
+          <ToolBar
+            floorId={floorId}
+            tipMessage={tipMessage}
+            tipClass={tipClass}
+            onFloorChange={handleFloorChange}
           />
-        </div>
+        </Suspense>
       </div>
-      <div id="mid2">
-        <p style={{ margin: 10 }}>
-          <span id="lastUsedTitle" />
-          <small>（Ctrl+滚轮放缩，右键置顶）</small>{" "}
-          <button id="clearLastUsedBtn">清除</button>
-        </p>
-        <div className="map" id="lastUsedDiv">
-          <canvas
-            id="lastUsed"
-            className="gameCanvas"
-            style={{ overflow: "hidden" }}
-          />
-        </div>
-      </div>
-      <div id="right">
-        <div id="iconLib">
-          <div id="iconImages" />
-          <div id="selectBox">
-            <div id="dataSelection" style={{ display: "none" }} />
-          </div>
-        </div>
-        <button id="iconExpandBtn" />
-      </div>
-      <div id="menuDiv">
-        <div id="midMenu" style={{ display: "none" }}>
-          <div id="extraEvent" className="menuitem" style={{ display: "none" }}>
-            <div className="menuitem-content" />
-          </div>
-          <div id="chooseThis" className="menuitem">
-            <div className="menuitem-content">选中此点</div>
-          </div>
-          <div id="chooseInRight" className="menuitem">
-            <div className="menuitem-content">在素材区选中此图块</div>
-          </div>
-          <div id="copyLoc" className="menuitem">
-            <div className="menuitem-content">复制此事件</div>
-          </div>
-          <div id="pasteLoc" className="menuitem">
-            <div className="menuitem-content">粘贴到此事件</div>
-          </div>
-          <div id="clearEvent" className="menuitem">
-            <div className="menuitem-content">仅清空此点事件</div>
-          </div>
-          <div id="clearLoc" className="menuitem">
-            <div className="menuitem-content">清空此点及事件</div>
-          </div>
-        </div>
-      </div>
+
+      {/* 最近使用面板 */}
+      <RecentlyUsedPanel
+        items={[]}
+        selectedId={
+          typeof selectedBlock === "object" ? selectedBlock?.id : undefined
+        }
+        onSelect={handleRecentlyUsedSelect}
+      />
+
+      {/* 素材面板 */}
+      <MaterialPanel
+        selectedBlock={selectedBlock}
+        onSelectedBlockChange={handleSelectedBlockChange}
+      />
+
+      {/* 右键菜单 */}
+      <Suspense fallback={null}>
+        <ContextMenu
+          floorId={floorId}
+          visible={contextMenuVisible}
+          x={contextMenuPos.x}
+          y={contextMenuPos.y}
+          onClose={handleCloseContextMenu}
+          onSelectBlock={handleSelectBlockFromMenu}
+        />
+      </Suspense>
     </>
   );
-}
+};
+
+/**
+ * MapEditor 导出组件
+ *
+ * 包装 Provider 提供状态管理
+ */
+export const MapEditor: FC = () => (
+  <MapEditorStore.Provider>
+    <MapEditorInner />
+  </MapEditorStore.Provider>
+);
+
+export default MapEditor;

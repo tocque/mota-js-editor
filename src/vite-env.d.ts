@@ -95,6 +95,9 @@ declare global {
     editor_multi: EditorMultiApi | undefined;
     editor_blockly: EditorBlockly | undefined;
     openColorPicker: OpenColorPickerFunc | undefined;
+    printf: PrintfFunc;
+    printe: PrinteFunc;
+    printi: PrintiFunc;
     tern: typeof import("tern");
     Awesomplete: unknown;
   }
