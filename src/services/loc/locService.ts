@@ -16,29 +16,14 @@
 import { floorService } from "@/services/floor";
 import type { Action } from "@/utils/action";
 import type { LocPos } from "@/stores/locState";
+import { locCommands } from "@/project/commands";
+import type { CommandResult } from "@/project/commands";
+import { getLocDataFromFloor, LOC_FIELDS, type LocData, type LocField } from "@/project/model/locModel";
 
 /**
  * Loc 数据字段（楼层文件中与位置相关的字段）
  */
-export const LOC_FIELDS = [
-  "events",
-  "autoEvent",
-  "changeFloor",
-  "beforeBattle",
-  "afterBattle",
-  "afterGetItem",
-  "afterOpenDoor",
-  "cannotMove",
-] as const;
-
-export type LocField = (typeof LOC_FIELDS)[number];
-
-/**
- * Loc 数据（某个位置的所有事件数据）
- */
-export type LocData = {
-  [K in LocField]?: unknown;
-};
+export { LOC_FIELDS, type LocData, type LocField };
 
 /**
  * locService - 地图选点服务
@@ -55,19 +40,7 @@ class LocServiceImpl {
    */
   getLocData(floorId: string, pos: LocPos): LocData {
     const floorData = floorService.getFloor(floorId);
-    const locKey = `${pos.x},${pos.y}`;
-    const locData: LocData = {};
-
-    for (const field of LOC_FIELDS) {
-      const fieldData = floorData[field as keyof typeof floorData];
-      if (fieldData && typeof fieldData === "object" && locKey in fieldData) {
-        locData[field] = (fieldData as Record<string, unknown>)[locKey];
-      } else {
-        locData[field] = null;
-      }
-    }
-
-    return locData;
+    return getLocDataFromFloor(floorData, pos);
   }
 
   /**
@@ -85,32 +58,10 @@ class LocServiceImpl {
    *   ['change', "['events']", { ... }]
    * ]);
    */
-  saveLocData(floorId: string, pos: LocPos, actions: Action[]): void {
-    if (actions.length === 0) return;
+  saveLocData(floorId: string, pos: LocPos, actions: Action[]): Promise<CommandResult> {
+    if (actions.length === 0) return Promise.resolve({ ok: true });
 
-    const locKey = `${pos.x},${pos.y}`;
-
-    // 将 loc 级别的 action 转换为 floor 级别的 action
-    const floorActions: Action[] = actions.map((action) => {
-      const [type, path, value] = action;
-
-      // 处理 autoEvent 的特殊路径格式
-      // autoEvent 的路径格式是 ['autoEvent']['pageId']
-      // 需要转换为 ['autoEvent']['x,y']['pageId']
-      if (/\['autoEvent'\]\['\d+'\]$/.test(path)) {
-        const newPath = path.replace(
-          /\['\d+'\]$/,
-          (v) => `['${locKey}']${v}`
-        );
-        return [type, newPath, value] as Action;
-      }
-
-      // 普通字段：添加位置索引
-      // ['events'] -> ['events']['x,y']
-      return [type, `${path}['${locKey}']`, value] as Action;
-    });
-
-    floorService.saveFloor(floorId, floorActions);
+    return locCommands.patch(floorId, pos, actions);
   }
 
   /**
@@ -122,34 +73,8 @@ class LocServiceImpl {
    * @param pos - 位置坐标
    * @returns 新页面的 ID
    */
-  addAutoEventPage(floorId: string, pos: LocPos): string {
-    const locKey = `${pos.x},${pos.y}`;
-    const floorData = floorService.getFloor(floorId);
-
-    // 获取当前位置的 autoEvent
-    const autoEventAtLoc =
-      (floorData.autoEvent as Record<string, Record<string, unknown>>)?.[
-        locKey
-      ] ?? {};
-
-    // 找到下一个可用的页面 ID（从 2 开始）
-    let newPageId = 2;
-    while (Object.prototype.hasOwnProperty.call(autoEventAtLoc, newPageId)) {
-      newPageId++;
-    }
-
-    const newPageIdStr = String(newPageId);
-
-    // 创建新的自动事件页
-    const action: Action = [
-      "add",
-      `['autoEvent']['${locKey}']['${newPageIdStr}']`,
-      null,
-    ];
-
-    floorService.saveFloor(floorId, [action]);
-
-    return newPageIdStr;
+  addAutoEventPage(floorId: string, pos: LocPos): Promise<CommandResult & { pageId?: string }> {
+    return locCommands.addAutoEventPage(floorId, pos);
   }
 
   /**

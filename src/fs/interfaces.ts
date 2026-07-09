@@ -63,3 +63,17 @@ export interface IDataHandler<T> extends IContentHandler<T> {
   /** 获取底层文件内容（用于构造错误原因） */
   getFileHandler(): { getContent(): Content<string> };
 }
+
+/**
+ * RecoverableResource - 可被 ContentBoundary 恢复的数据源
+ *
+ * 这是 DataHandler/FileHandler 之外的公共恢复协议。上层资源可以隐藏具体
+ * handler 实现，但仍保留 retry、raw 文件修复和状态展示能力。
+ */
+export interface RecoverableResource<T = unknown> extends IContentHandler<T> {
+  /** 获取底层原始文件资源；解析错误时用于打开原文修复 */
+  raw?(): IContentHandler<string>;
+
+  /** 返回自身恢复句柄，便于 resource.recoverable() 形式使用 */
+  recoverable(): RecoverableResource<T>;
+}

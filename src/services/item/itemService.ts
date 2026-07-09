@@ -10,11 +10,11 @@
  * - 内存数据源 + 异步落盘
  */
 
-import { produce } from "immer";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import type { Content } from "@/fs";
-import { applyActions, type Action } from "@/utils/action";
+import type { Action } from "@/utils/action";
 import { ItemsDataHandler } from "./ItemsDataHandler";
+import { projectData } from "@/project/data/projectData";
 
 /** 道具数据文件路径 */
 const ITEMS_DATA_PATH = "project/items.js";
@@ -109,22 +109,12 @@ class ItemServiceImpl {
       return;
     }
 
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 将 actions 的路径前缀加上道具 ID
-        const prefixedActions: Action[] = actions.map(([type, path, value]) => [
-          type,
-          `['${id}']${path}`,
-          value,
-        ]);
-
-        applyActions(draft as unknown as Record<string, unknown>, prefixedActions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
+    const prefixedActions: Action[] = actions.map(([type, path, value]) => [
+      type,
+      `['${id}']${path}`,
+      value,
+    ]);
+    void projectData.items().patch(prefixedActions);
   }
 
   /**
@@ -135,28 +125,7 @@ class ItemServiceImpl {
       return;
     }
 
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        applyActions(draft as unknown as Record<string, unknown>, actions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
-  }
-
-  /**
-   * 同步数据到全局变量（兼容 legacy 代码）
-   */
-  private syncToGlobal(data: ItemsData): void {
-    if (typeof items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a !== "undefined") {
-      // 清空并复制新数据
-      const global = items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a;
-      for (const key of Object.keys(global)) {
-        delete global[key];
-      }
-      Object.assign(global, data);
-    }
+    void projectData.items().patch(actions);
   }
 
   /**

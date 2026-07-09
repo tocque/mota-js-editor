@@ -3,16 +3,17 @@ import { Workbench } from "./Workbench";
 import { ModalsProvider } from "./Workbench/modals";
 import { EditorStore } from "./stores/EditorStore";
 import { editorHandler } from "./fs/EditorHandler";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 
 const App: FC = () => {
 
   const { setEditorInitialized, theme } = EditorStore.useStore();
 
   useEffect(() => {
-    // setupEditor 已移除，直接标记就绪
-    // editorHandler.markReady();
-    // setEditorInitialized(true);
-  }, []);
+    // Modern editor startup is independent from the legacy game runtime.
+    editorHandler.markReady();
+    setEditorInitialized(true);
+  }, [setEditorInitialized]);
 
   // 响应主题变化，更新 CSS 链接
   useEffect(() => {
@@ -26,7 +27,9 @@ const App: FC = () => {
     <>
       <link id="color_css" rel="stylesheet" />
 
-      <Workbench />
+      <AppErrorBoundary>
+        <Workbench />
+      </AppErrorBoundary>
       {/* <script>/* */}
       <div id="gameInject" style={{ display: "none" }} />
       <ModalsProvider />

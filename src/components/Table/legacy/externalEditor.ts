@@ -7,6 +7,7 @@
 
 import type { EditorBlockly, EditorMulti, Editor } from '@/types';
 import type { FieldConfig, FieldType } from '../types';
+import { callTableMetaFunctionString } from '@/project/tableMeta/TableMetaEvaluator';
 
 /**
  * 获取全局 editor_blockly 对象
@@ -101,6 +102,7 @@ export function openExternalEditor(
         editorMulti.open(
           initialValue,
           {
+            isString,
             lint: config._lint,
             preview: config._preview,
           },
@@ -141,24 +143,18 @@ export function openExternalEditor(
           (one: string) => {
             if (!/^[-A-Za-z0-9_.]+$/.test(one)) return null;
             if (config._transform) {
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-implied-eval
-                return eval('(' + config._transform + ')(one)');
-              } catch {
-                return one;
-              }
+              const transformed = callTableMetaFunctionString<unknown>(config._transform, [one]).value;
+              return typeof transformed === "string" || transformed === null ? transformed : one;
             }
             return one;
           },
           (data: string[]) => {
             let newValue: unknown = data;
             if (config._onconfirm) {
-              try {
-                // eslint-disable-next-line @typescript-eslint/no-implied-eval
-                newValue = eval('(' + config._onconfirm + ')(currentValue, data)');
-              } catch {
-                // 保持 data 作为新值
-              }
+              newValue = callTableMetaFunctionString<unknown>(
+                config._onconfirm,
+                [currentValue, data],
+              ).value ?? data;
             }
             setValue(field, newValue);
           },
@@ -193,8 +189,8 @@ export function openExternalEditor(
           x,
           y,
           false,
-          (_floorId: string, newX: number, newY: number) => {
-            setValue(field, [newX, newY]);
+          (_floorId: string, newX: string | number, newY: string | number) => {
+            setValue(field, [Number(newX), Number(newY)]);
           },
         );
       } else {

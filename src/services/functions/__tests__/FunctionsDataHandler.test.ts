@@ -134,7 +134,7 @@ describe("stringifyFunctionsData", () => {
     const result = stringifyFunctionsData(input);
 
     // 函数字符串不应该被引号包裹
-    expect(result).toContain('"myFunc": function myFunc() { return 1; }');
+    expect(result).toContain('"myFunc": function() { return 1; }');
   });
 
   it("应该使用 tab 缩进", () => {

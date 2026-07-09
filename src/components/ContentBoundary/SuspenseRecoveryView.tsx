@@ -1,5 +1,5 @@
 import { useEffect, type FC, type ReactNode } from "react";
-import type { IContentHandler } from "@/fs/interfaces";
+import type { IContentHandler, RecoverableResource } from "@/fs/interfaces";
 import { DataHandler } from "@/fs/DataHandler";
 import { useSignal } from "@/hooks/useFs";
 import {
@@ -10,7 +10,7 @@ import {
 } from "./RecoveryUI";
 import { FileHandler } from "@/fs/FileHandler";
 
-export type SuspenseHandler = DataHandler<unknown> | FileHandler;
+export type SuspenseHandler = DataHandler<unknown> | FileHandler | RecoverableResource<unknown>;
 
 export interface SuspenseRecoveryViewProps {
   handler: SuspenseHandler;
@@ -74,15 +74,15 @@ export const SuspenseRecoveryView: FC<SuspenseRecoveryViewProps> = ({
 
     case "error": {
       // 区分 parse-error 和 io-error：有 rawContent 说明文件读取成功但解析失败
-      const rawContent =
-        handler instanceof DataHandler
-          ? (() => {
-              const fileContent = handler.getFileHandler().getContent();
-              return fileContent.status === "loaded"
-                ? fileContent.value
-                : undefined;
-            })()
+      const raw = "raw" in handler && typeof handler.raw === "function"
+        ? handler.raw()
+        : handler instanceof DataHandler
+          ? handler.getFileHandler()
           : undefined;
+      const rawContent = (() => {
+        const fileContent = raw?.getContent();
+        return fileContent?.status === "loaded" ? fileContent.value : undefined;
+      })();
       if (rawContent !== undefined) {
         return (
           <ParseErrorRecovery

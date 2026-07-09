@@ -11,6 +11,7 @@ export class MemoryFileSystem {
   private writeDelay = 0; // 模拟写入延迟（毫秒）
   private writeCount = 0; // 写入次数计数器
   private writeError: Error | null = null; // 模拟写入错误
+  private writeErrors = new Map<string, Error>(); // 按路径模拟写入错误
 
   /**
    * 设置写入延迟（用于测试并发写入）
@@ -34,10 +35,24 @@ export class MemoryFileSystem {
   }
 
   /**
+   * 设置指定路径的写入错误（用于测试错误隔离）
+   */
+  setWriteErrorForPath(path: string, error: Error): void {
+    this.writeErrors.set(path, error);
+  }
+
+  /**
    * 清除写入错误
    */
   clearWriteError(): void {
     this.writeError = null;
+  }
+
+  /**
+   * 清除指定路径的写入错误
+   */
+  clearWriteErrorForPath(path: string): void {
+    this.writeErrors.delete(path);
   }
 
   /**
@@ -51,12 +66,23 @@ export class MemoryFileSystem {
     return content;
   }
 
+  async readFileBinary(path: string): Promise<ArrayBuffer> {
+    const content = await this.readFile(path, "base64");
+    const buffer = Buffer.from(content, "base64");
+    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+  }
+
   /**
    * 写入文件
    */
   async writeFile(path: string, content: string, encoding: FileEncoding): Promise<void> {
     // 增加写入计数
     this.writeCount++;
+
+    const pathError = this.writeErrors.get(path);
+    if (pathError) {
+      throw pathError;
+    }
 
     // 模拟写入错误
     if (this.writeError) {
@@ -158,6 +184,7 @@ export class MemoryFileSystem {
   createFsInterface(): Fs {
     const promises: FsPromiseApi = {
       readFile: this.readFile.bind(this),
+      readFileBinary: this.readFileBinary.bind(this),
       writeFile: this.writeFile.bind(this),
       deleteFile: this.deleteFile.bind(this),
       readdir: this.readdir.bind(this),

@@ -15,6 +15,7 @@ import type { IDataHandler } from "@/fs/interfaces";
 import { enemyService, type EnemysData } from "@/services/enemy";
 import { itemService, type ItemsData } from "@/services/item";
 import { mapBlockService, type MapsBlocksData } from "@/services/mapBlock";
+import { prefabCommands } from "@/project/commands";
 
 /**
  * 图块信息类型
@@ -107,25 +108,7 @@ class PrefabServiceImpl {
       return;
     }
 
-    const type = this.getPrefabType(info);
-
-    switch (type) {
-      case "enemy":
-        if (info.id) {
-          enemyService.saveEnemy(info.id, actions);
-        }
-        break;
-      case "item":
-        if (info.id) {
-          itemService.saveItem(info.id, actions);
-        }
-        break;
-      case "mapBlock":
-        if (info.idnum !== undefined) {
-          mapBlockService.saveBlock(info.idnum, actions);
-        }
-        break;
-    }
+    void prefabCommands.patch(info, actions);
   }
 
   /**

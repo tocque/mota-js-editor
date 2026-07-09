@@ -1,7 +1,9 @@
-import { useState, useMemo, type FC, type FormEvent } from "react";
+import { useEffect, useRef, useState, useMemo, type FC, type ChangeEvent, type FormEvent } from "react";
 import { GridCanvas, selectionBox } from "@/components/GridCanvas";
 import type { GridMarker } from "@/components/GridCanvas";
-import { EditorStore, useEditorInitialized } from "@/stores/EditorStore";
+import { BinaryFileHandler } from "@/fs";
+import { EditorStore } from "@/stores/EditorStore";
+import { useAppendPicTemplate, consumeAppendPicTemplate } from "@/stores/appendPicState";
 import { TList } from "./constants";
 import { hueRotate } from "@/utils/canvas/hue";
 import { getGridSizeForMaterial, getFrameCountForMaterial } from "@/utils/appendPic/materialConfig";
@@ -12,6 +14,8 @@ import { processImageFile } from "./imageProcessing";
 
 export const AppendPicPanel: FC = () => {
   const { uiRatio } = EditorStore.useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const appendTemplate = useAppendPicTemplate();
   const [autoRegisterChecked, setAppendRegisterChecked] = useState(true);
 
   // 状态管理
@@ -71,14 +75,25 @@ export const AppendPicPanel: FC = () => {
   };
 
   const handleSelectFileClick = () => {
-    core.readFile(async (content: string) => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
       try {
-        const processedImage = await processImageFile(content, gridSize);
+        if (!reader.result) return;
+        const processedImage = await processImageFile(reader.result as string, gridSize);
         setSourceImage(processedImage);
       } catch (e) {
         printe(e);
       }
-    }, null, "image/*", "img");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleChangeColorInput = (e: FormEvent<HTMLInputElement>) => {
@@ -130,79 +145,69 @@ export const AppendPicPanel: FC = () => {
     setCurrentFrame((prev) => (prev + 1) % frameCount);
   };
   
-  useEditorInitialized(() => {
-
-    editor.uifunctions.dragImageToAppend = async function(file: File, cls: string) {
-      const reader = new FileReader();
-      reader.onload = async function() {
-        try {
-          if (!reader.result) return;
-          const gridSize = getGridSizeForMaterial(cls);
-          const processedImage = await processImageFile(reader.result as string, gridSize);
-          
-          if (cls === "terrains") return;
-          if (confirm("你确定要快速追加么？")) {
-            if (cls === "autotile") {
-              appendAutotileMaterial(processedImage);
-            } else {
-              quickAppendMaterial({
-                sourceImage: processedImage,
-                materialType: cls,
-                autoRegister: autoRegisterChecked,
-              });
-            }
-          }
-        } catch (e) {
-          printe(e);
-        }
-      };
-      reader.readAsDataURL(file);
-    };
-
-    // @ts-expect-error Legacy editor functions with any types
-    editor.uifunctions.appendMaterialByInfo = async function(info) {
+  useEffect(() => {
+    if (!appendTemplate) return;
+    void (async () => {
+      const info = consumeAppendPicTemplate();
+      if (!info) return;
       if (info.isTile) {
         printe("额外素材不支持此功能！");
         return;
       }
-      let img = null;
-      const cls = info.images;
-      const height = cls == "enemy48" || cls == "npc48" ? 48 : 32;
-
-      if (cls == "autotile") {
-        img = core.material.images.autotile[info.id];
-      } else {
-        const image = core.material.images[cls];
-        const width = image.width;
-        img = document.createElement("canvas");
-        img.width = width;
-        img.height = height;
-        img.getContext("2d")!.drawImage(image, 0, info.y * height, width, height, 0, 0, width, height);
+      if (!info.images) {
+        printe("素材信息缺少 images");
+        return;
       }
 
-      editor.mode.change("appendpic");
-      
-      // 纯函数处理，不修改编辑器状态
       try {
-        const gridSize = getGridSizeForMaterial(cls);
-        const processedImage = await processImageFile(img, gridSize);
-        
-        // 将处理后的图像设置到编辑器状态
+        let source: HTMLCanvasElement | HTMLImageElement;
+        const grid = getGridSizeForMaterial(info.images);
+        if (info.images === "autotile") {
+          if (!info.id) throw new Error("自动元件缺少 id");
+          const handler = new BinaryFileHandler(`project/autotiles/${info.id}.png`);
+          await handler.load();
+          await handler.waitForSettled();
+          const content = handler.getContent();
+          if (content.status !== "loaded") throw new Error(`无法加载自动元件：${info.id}`);
+          source = content.value;
+        } else {
+          const row = typeof info.y === "number" ? info.y : 0;
+          const handler = new BinaryFileHandler(`project/materials/${info.images}.png`);
+          await handler.load();
+          await handler.waitForSettled();
+          const content = handler.getContent();
+          if (content.status !== "loaded") throw new Error(`无法加载素材：${info.images}`);
+          const image = content.value;
+          const ctx = createEmptyCanvas([image.width, grid[1]]);
+          ctx.drawImage(image, 0, row * grid[1], image.width, grid[1], 0, 0, image.width, grid[1]);
+          source = ctx.canvas;
+        }
+
+        const processedImage = await processImageFile(source, grid);
         setSourceImage(processedImage);
-        setMaterialType(cls);
+        setMaterialType(info.images);
+        setFrameSelections([]);
+        setCurrentFrame(0);
         setHueRotateDegree(0);
       } catch (e) {
         printe(e);
       }
-    };
-  });
+    })();
+  }, [appendTemplate]);
 
   return (
-    <div id="left1" className="leftTab">
+    <div id="left1" className="leftTab" data-test-id="panel-appendpic">
       {/* appendpic */}
       <h3 className="leftTabHeader">追加素材</h3>
       <div className="leftTabContent">
         <p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleFileInputChange}
+          />
           <input
             id="selectFileBtn"
             type="button"
@@ -268,6 +273,7 @@ export const AppendPicPanel: FC = () => {
         </p>
         <div
           id="appendPicCanvas"
+          data-test-id="appendpic-canvas"
           style={{ position: "relative", overflow: "auto", height: 470 }}
         >
           <GridCanvas

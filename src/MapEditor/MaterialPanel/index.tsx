@@ -9,14 +9,17 @@ import {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
   type FC,
 } from "react";
-import { Affix, Button } from "antd";
+import { Button } from "antd";
 import { fs } from "@/services/fs";
+import { useModelResourceSuspense } from "@/hooks/suspense";
+import { projectModel, type BlockRegistry, type RegistryBlockInfo } from "@/project/model/projectModel";
 import { useConfigItem } from "@/stores/useEditorConfig";
 import { type LocPOD, type GridPOD } from "@/utils/coordinate";
 import { MaterialImage } from "./MaterialImage";
-import type { MaterialPanelProps, SelectedBlock } from "./types";
+import type { BlockInfo, MaterialPanelProps, SelectedBlock } from "./types";
 
 /** 素材类型配置 */
 const MATERIAL_TYPES = [
@@ -38,6 +41,8 @@ export const MaterialPanel: FC<MaterialPanelProps> = ({
   onSelectedBlockChange,
 }) => {
   const iconLibRef = useRef<HTMLDivElement>(null);
+  const blockRegistryResource = useMemo(() => projectModel.blockRegistry(), []);
+  const blockRegistry = useModelResourceSuspense(blockRegistryResource);
 
   // 折叠状态（持久化）
   const [folded, setFolded] = useConfigItem("folded", false);
@@ -62,11 +67,12 @@ export const MaterialPanel: FC<MaterialPanelProps> = ({
 
   // 处理素材点击
   const handleMaterialClick = useCallback(
-    (id: string, info: SelectedBlock, gridLoc: LocPOD, _grid: GridPOD) => {
+    (id: string, gridLoc: LocPOD, _grid: GridPOD) => {
+      const info = resolveSelectedBlock(id, gridLoc, blockRegistry);
       onSelectedBlockChange(info);
       setSelection({ id, gridLoc });
     },
-    [onSelectedBlockChange],
+    [blockRegistry, onSelectedBlockChange],
   );
 
   // 切换折叠状态
@@ -152,3 +158,68 @@ export const MaterialPanel: FC<MaterialPanelProps> = ({
 };
 
 export default MaterialPanel;
+
+function toBlockInfo(block: RegistryBlockInfo): BlockInfo {
+  return {
+    ...block,
+    idnum: block.idnum,
+    id: block.id ?? "",
+    images: block.images ?? block.cls ?? "terrains",
+    y: typeof block.y === "number" ? block.y : block.idnum,
+    x: block.x,
+    isTile: block.kind === "tileset" || block.isTile,
+  };
+}
+
+function findBlockBySprite(
+  registry: BlockRegistry,
+  images: string,
+  y: number,
+  id?: string,
+): BlockInfo | undefined {
+  for (const block of registry.values()) {
+    if ((block.images ?? block.cls) !== images) continue;
+    if (id && block.id !== id) continue;
+    if (typeof block.y === "number" && block.y === y) return toBlockInfo(block);
+  }
+  return undefined;
+}
+
+function resolveSelectedBlock(id: string, gridLoc: LocPOD, registry: BlockRegistry): SelectedBlock {
+  const [, y] = gridLoc;
+
+  if (id === "airwall") {
+    return {
+      idnum: 17,
+      id: "airwall",
+      images: "terrains",
+      y: 0,
+    };
+  }
+
+  if (id === "terrains") {
+    return findBlockBySprite(registry, "terrains", y) ?? {
+      idnum: 0,
+      id: "",
+      images: "terrains",
+      y,
+    };
+  }
+
+  if (id.startsWith("autotile:")) {
+    const autotileId = id.slice("autotile:".length).replace(/\.png$/i, "");
+    return findBlockBySprite(registry, "autotile", 0, autotileId) ?? {
+      idnum: 0,
+      id: autotileId,
+      images: "autotile",
+      y: 0,
+    };
+  }
+
+  return findBlockBySprite(registry, id, y) ?? {
+    idnum: 0,
+    id: "",
+    images: id,
+    y,
+  };
+}

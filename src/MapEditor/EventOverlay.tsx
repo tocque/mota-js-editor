@@ -326,6 +326,7 @@ export const EventOverlay: FC<EventOverlayProps> = ({ floorId }) => {
       ref={mountCanvas}
       className="gameCanvas"
       id="efg"
+      data-test-id="event-overlay"
       width={CANVAS_SIZE}
       height={CANVAS_SIZE}
       style={{ position: "absolute", zIndex: 50 }}

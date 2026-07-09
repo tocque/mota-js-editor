@@ -1,9 +1,10 @@
 /**
  * PanelSlot - 面板插槽组件
  *
- * 使用 React 19 的 Activity 组件控制面板的显示/隐藏：
- * - 激活时：mode="visible"，正常渲染，effects 运行
- * - 未激活时：mode="hidden"，display:none 隐藏，effects unmount（停止数据订阅），但保留状态
+ * 只挂载当前激活面板。
+ *
+ * 旧面板里仍有一些 runtime-only 全局依赖。Activity hidden 仍会构建子树，
+ * 会让这些依赖在首屏启动时执行；迁移期先以启动隔离为优先。
  *
  * 使用方式：
  * <PanelSlot panelId="tower">
@@ -11,8 +12,9 @@
  * </PanelSlot>
  */
 
-import { Activity, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useIsPanelActive, type PanelId } from '@/stores/PanelStore';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
 
 export interface PanelSlotProps {
   /** 面板 ID */
@@ -24,9 +26,10 @@ export interface PanelSlotProps {
 export function PanelSlot({ panelId, children }: PanelSlotProps) {
   const isActive = useIsPanelActive(panelId);
 
+  if (!isActive) return null;
   return (
-    <Activity mode={isActive ? 'visible' : 'hidden'}>
+    <PanelErrorBoundary panelId={panelId}>
       {children}
-    </Activity>
+    </PanelErrorBoundary>
   );
 }

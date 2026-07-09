@@ -9,8 +9,11 @@ import { useCallback, useState, type FC } from "react";
 import { ContentLeftTab } from "../components/ContentLeftTab";
 import { Table, EditModeSegmented } from "@/components/Table";
 import { useTableMetaEditor } from "@/components/Table/hooks";
-import { useCommonEventDataSuspense, useTableMetaSuspense } from "@/hooks";
-import { commonEventService } from "@/services/commonEvent";
+import { useTableMetaSuspense } from "@/hooks";
+import { useResourceSuspense } from "@/hooks/suspense";
+import { projectData } from "@/project/data/projectData";
+import { tableCommands } from "@/project/commands";
+import { notifyCommandResult, notifyError } from "@/utils/notify";
 import type { EditMode, TableAction, CommentObject } from "@/components/Table/types";
 import type { Action } from "@/utils/action";
 
@@ -26,7 +29,7 @@ interface CommonEventPanelContentProps {
 
 const CommonEventPanelContent: FC<CommonEventPanelContentProps> = ({ editMode }) => {
   // 使用 Suspense 版本的 hooks - 数据未就绪时会 throw
-  const [commonEvents] = useCommonEventDataSuspense();
+  const [commonEvents] = useResourceSuspense(projectData.commonEvents());
   const eventsMeta = useTableMetaSuspense("eventsComment");
 
   // 只取 commonEvent 的元数据（与原实现一致）
@@ -36,10 +39,10 @@ const CommonEventPanelContent: FC<CommonEventPanelContentProps> = ({ editMode })
   // 统一的变更处理 - 即时保存
   const handleChange = useCallback(async (action: TableAction) => {
     try {
-      commonEventService.saveCommonEventData([action as Action]);
-      printf?.("保存成功！");
+      const result = await tableCommands.patchCommonEvents([action as Action]);
+      notifyCommandResult(result, "保存成功！");
     } catch (err) {
-      printe?.(String(err));
+      notifyError(err);
     }
   }, []);
 
@@ -81,7 +84,7 @@ export const CommonEventPanel: FC = () => {
   );
 
   return (
-    <ContentLeftTab id="left9" title="公共事件" actions={actions}>
+    <ContentLeftTab id="left9" testId="panel-common-event" title="公共事件" actions={actions}>
       <CommonEventPanelContent editMode={editMode} />
     </ContentLeftTab>
   );

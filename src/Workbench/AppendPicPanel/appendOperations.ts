@@ -1,8 +1,10 @@
 import type { LocPOD } from "@/utils/coordinate";
-import { getGridSizeForMaterial } from "@/utils/appendPic/materialConfig";
+import { getFrameCountForMaterial, getGridSizeForMaterial } from "@/utils/appendPic/materialConfig";
 import { drawImageFromGrid, createSpriteCanvas, getAppendPos } from "@/utils/appendPic/draw";
 import { createEmptyCanvas } from "@/utils/canvas/create";
-import { fs } from "@/services/fs";
+import { BinaryFileHandler } from "@/fs";
+import { materialCommands } from "@/project/commands";
+import { notifyCommandResult, notifyError, notifySuccess } from "@/utils/notify";
 
 type ImageSource = HTMLImageElement | HTMLCanvasElement;
 
@@ -19,12 +21,34 @@ interface QuickAppendMaterialParams {
   autoRegister: boolean;
 }
 
+async function loadProjectImage(path: string): Promise<HTMLImageElement> {
+  const handler = new BinaryFileHandler(path);
+  await handler.load();
+  await handler.waitForSettled();
+  const content = handler.getContent();
+  if (content.status !== "loaded") {
+    throw content.status === "error"
+      ? content.error
+      : new Error(`Failed to load image: ${path}`);
+  }
+  return content.value;
+}
+
+function assertFrameSelections(frameSelections: LocPOD[], expected: number): void {
+  if (frameSelections.length < expected) {
+    throw new Error(`请先选择 ${expected} 帧素材位置`);
+  }
+  for (let i = 0; i < expected; i += 1) {
+    if (!frameSelections[i]) throw new Error(`请先选择 ${expected} 帧素材位置`);
+  }
+}
+
 /**
  * 追加 Autotile 素材
  */
 export async function appendAutotileMaterial(sourceImage: ImageSource): Promise<void> {
   if (sourceImage.width % 96 !== 0 || sourceImage.height !== 128) {
-    printe("不合法的Autotile图片！");
+    notifyError("不合法的Autotile图片！");
     return;
   }
 
@@ -34,32 +58,11 @@ export async function appendAutotileMaterial(sourceImage: ImageSource): Promise<
   spriteCtx.drawImage(sourceImage, 0, 0);
   const imgbase64 = spriteCanvas.toDataURL().split(",")[1];
 
-  try {
-    // Step 1: List文件名
-    const data = await fs.promises.readdir("./project/autotiles");
-
-    // Step 2: 选择Autotile文件名
-    let filename = "";
-    for (let i = 1; ; ++i) {
-      filename = "autotile" + i;
-      if (data.indexOf(filename + ".png") === -1) break;
-    }
-
-    // Step 3: 写入文件
-    await fs.promises.writeFile("./project/autotiles/" + filename + ".png", imgbase64, "base64");
-
-    // Step 4: 自动注册
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    editor.file.registerAutotile(filename, (err: any) => {
-      if (err) {
-        printe(err);
-        throw err;
-      }
-      printe("自动元件" + filename + "注册成功,请F5刷新编辑器");
-    });
-  } catch (err) {
-    printe(err);
-    throw err;
+  const result = await materialCommands.appendAutotileImage(imgbase64);
+  if (result.ok) {
+    notifySuccess(`自动元件${result.filename}注册成功`);
+  } else {
+    notifyCommandResult(result, "");
   }
 }
 
@@ -70,9 +73,11 @@ export async function appendMaterial(params: AppendMaterialParams): Promise<void
   const { sourceImage, materialType, frameSelections, autoRegister } = params;
 
   // 创建 sprite canvas
-  const targetImg = core.material.images[materialType];
   const gridSize = getGridSizeForMaterial(materialType);
   const [, gridHeight] = gridSize;
+  const frameCount = getFrameCountForMaterial(materialType);
+  assertFrameSelections(frameSelections, frameCount);
+  const targetImg = await loadProjectImage(`project/materials/${materialType}.png`);
   const { canvas: spriteCanvas, ctx: spriteCtx } = createSpriteCanvas(targetImg, gridHeight);
 
   // 追加新素材 - 使用工具函数简化
@@ -85,26 +90,19 @@ export async function appendMaterial(params: AppendMaterialParams): Promise<void
   const imgName = materialType;
 
   try {
-    await fs.promises.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64");
-
-    // 更新全局图片引用
-    core.material.images[imgName].src = imgbase64;
-    editor.widthsX[imgName][3] = spriteCanvas.height - gridHeight;
-
-    if (autoRegister) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      editor.file.autoRegister({ images: imgName }, (e: any) => {
-        if (e) {
-          printe(e);
-          throw e;
-        }
-        printf("追加素材并自动注册成功！你可以继续追加其他素材，最后再刷新以使用。");
-      });
-    } else {
-      printf("追加素材成功！你可以继续追加其他素材，最后再刷新以使用。");
+    const result = await materialCommands.appendMaterialImage(
+      imgName,
+      imgbase64.split(",")[1],
+      {
+        autoRegister,
+        rowCount: Math.floor(spriteCanvas.height / gridHeight),
+      },
+    );
+    if (notifyCommandResult(result, autoRegister ? "追加素材并自动注册成功！" : "追加素材成功！")) {
+      notifySuccess("你可以继续追加其他素材。");
     }
   } catch (err) {
-    printe(err);
+    notifyError(err);
     throw err;
   }
 }
@@ -116,7 +114,7 @@ export async function quickAppendMaterial(params: QuickAppendMaterialParams): Pr
   const { sourceImage, materialType, autoRegister } = params;
 
   if (!["items", "enemys", "enemy48", "npcs", "npc48"].includes(materialType)) {
-    printe("只有怪物或NPC才能快速导入！");
+    notifyError("只有怪物或NPC才能快速导入！");
     return;
   }
 
@@ -126,12 +124,12 @@ export async function quickAppendMaterial(params: QuickAppendMaterialParams): Pr
     sh = sourceImage.height;
   if (materialType === "items") {
     if (sw % 32 || sh % 32) {
-      printe("只有长宽都是32的倍数的道具图才可以快速导入！");
+      notifyError("只有长宽都是32的倍数的道具图才可以快速导入！");
       return;
     }
   } else {
     if ((sw !== 128 && sw !== 96) || sh !== 4 * gridHeight) {
-      printe("只有 3*4 或 4*4 的素材图片才可以快速导入！");
+      notifyError("只有 3*4 或 4*4 的素材图片才可以快速导入！");
       return;
     }
   }
@@ -139,7 +137,7 @@ export async function quickAppendMaterial(params: QuickAppendMaterialParams): Pr
   sh = sh / gridHeight;
 
   // 创建临时 sprite canvas
-  const targetImg = core.material.images[materialType];
+  const targetImg = await loadProjectImage(`project/materials/${materialType}.png`);
   const appendSize = materialType === "items" ? sw * sh - 1 : 3;
   const spriteCtx = createEmptyCanvas([targetImg.width, targetImg.height + appendSize * gridHeight]);
   const spriteCanvas = spriteCtx.canvas;
@@ -189,26 +187,19 @@ export async function quickAppendMaterial(params: QuickAppendMaterialParams): Pr
   const imgName = materialType;
 
   try {
-    await fs.promises.writeFile("./project/materials/" + imgName + ".png", imgbase64.split(",")[1], "base64");
-
-    // 更新全局图片引用
-    core.material.images[imgName].src = imgbase64;
-    editor.widthsX[imgName][3] = spriteCanvas.height - gridHeight;
-
-    if (autoRegister) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      editor.file.autoRegister({ images: imgName }, (e: any) => {
-        if (e) {
-          printe(e);
-          throw e;
-        }
-        printf("快速追加素材并自动注册成功！你可以继续追加其他素材，最后再刷新以使用。");
-      });
-    } else {
-      printf("快速追加素材成功！你可以继续追加其他素材，最后再刷新以使用。");
+    const result = await materialCommands.appendMaterialImage(
+      imgName,
+      imgbase64.split(",")[1],
+      {
+        autoRegister,
+        rowCount: Math.floor(spriteCanvas.height / gridHeight),
+      },
+    );
+    if (notifyCommandResult(result, autoRegister ? "快速追加素材并自动注册成功！" : "快速追加素材成功！")) {
+      notifySuccess("你可以继续追加其他素材。");
     }
   } catch (err) {
-    printe(err);
+    notifyError(err);
     throw err;
   }
 }

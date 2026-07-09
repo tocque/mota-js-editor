@@ -9,6 +9,7 @@
 import { DataHandler } from "@/fs/DataHandler";
 import type { FileHandler } from "@/fs/FileHandler";
 import type { CommentObject } from "@/components/Table";
+import { parseTableMetaSource } from "@/project/tableMeta/TableMetaEvaluator";
 
 /**
  * TableMetaDataHandler 类
@@ -30,12 +31,7 @@ export class TableMetaDataHandler extends DataHandler<CommentObject> {
    */
   protected parse(text: string): CommentObject {
     try {
-      const fn = new Function(`
-        "use strict";
-        ${text}
-        return ${this.varName};
-      `);
-      return fn() as CommentObject;
+      return parseTableMetaSource(text, this.varName);
     } catch (err) {
       throw new Error(`解析元数据内容失败: ${(err as Error).message}`);
     }

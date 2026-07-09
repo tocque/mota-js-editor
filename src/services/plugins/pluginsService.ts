@@ -15,6 +15,7 @@ import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import type { Content } from "@/fs";
 import { applyActions, type Action } from "@/utils/action";
 import { PluginsDataHandler, type PluginsData } from "./PluginsDataHandler";
+import { tableCommands } from "@/project/commands";
 
 /** 插件数据文件路径 */
 const PLUGINS_DATA_PATH = "project/plugins.js";
@@ -114,13 +115,7 @@ class PluginsServiceImpl {
       return;
     }
 
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 应用 actions
-        applyActions(draft as unknown as Record<string, unknown>, actions);
-      })
-    );
+    void tableCommands.patchPlugins(actions);
   }
 
   /**

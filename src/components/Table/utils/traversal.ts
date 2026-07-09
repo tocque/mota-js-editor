@@ -6,6 +6,7 @@
 
 import type { CommentObject, FieldArgs, FieldConfig, TableNode } from '../types';
 import { getShortField } from '@/utils/fieldPath';
+import { resolveTableMetaFunction } from '@/project/tableMeta/TableMetaEvaluator';
 
 
 /**
@@ -44,7 +45,8 @@ function resolveConfigValue<T>(
     return defaultValue;
   }
   if (typeof value === 'function') {
-    return (value as (args: FieldArgs) => T)(args);
+    return resolveTableMetaFunction(value as (args: FieldArgs) => T, args, args.field, defaultValue)
+      .value ?? defaultValue;
   }
   return value;
 }
@@ -62,7 +64,12 @@ function buildFieldConfig(
   if (parentCobj?._data) {
     if (typeof parentCobj._data === 'function') {
       // _data is a function that returns config for a given key
-      rawConfig = parentCobj._data(key);
+      rawConfig = resolveTableMetaFunction(
+        () => (parentCobj._data as (key: string) => FieldConfig)(key),
+        args,
+        args.cfield,
+        {} as FieldConfig,
+      ).value;
     } else {
       // _data is a record of configs
       rawConfig = parentCobj._data[key];
@@ -109,7 +116,12 @@ function buildFieldConfig(
     const value = mergedConfig[configKey];
     if (typeof value === 'function' && configKey !== '_checkboxSet') {
       // Resolve function values (except _checkboxSet which is handled differently)
-      (resolvedConfig as Record<string, unknown>)[configKey] = (value as (args: FieldArgs) => unknown)(args);
+      (resolvedConfig as Record<string, unknown>)[configKey] = resolveTableMetaFunction(
+        value as (args: FieldArgs) => unknown,
+        args,
+        args.field,
+        undefined,
+      ).value;
     }
   }
   
@@ -186,7 +198,7 @@ export function buildTableTree(
       if (parentCobj?._data && typeof parentCobj._data !== 'function') {
         const fieldCommentObj = parentCobj._data[key] as CommentObject | undefined;
         if (fieldCommentObj?._action) {
-          fieldCommentObj._action(args);
+          resolveTableMetaFunction(fieldCommentObj._action, args, cfield, undefined);
           vobj = args.vobj;
           parentVobj[key] = vobj;
         }

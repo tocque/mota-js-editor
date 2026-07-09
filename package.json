@@ -2,6 +2,7 @@
   "name": "mota-js-editor",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@11.1.1",
   "type": "module",
   "scripts": {
     "prepare": "panda codegen",
@@ -9,7 +10,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -31,6 +33,7 @@
     "json5": "^2.2.3",
     "localforage": "^1.10.0",
     "lz-string": "^1.5.0",
+    "pixi.js": "8.19.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tern": "^0.24.3",
@@ -39,6 +42,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@pandacss/dev": "^1.8.1",
+    "@playwright/test": "^1.61.1",
     "@testing-library/react": "^16.3.2",
     "@types/awesomplete": "^1.1.16",
     "@types/codemirror": "^5.60.17",

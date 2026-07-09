@@ -5,11 +5,23 @@
  * 迁移自 editor_mappanel.ts 的菜单相关函数
  */
 
-import { useCallback, useEffect, type FC } from "react";
+import { useCallback, useEffect, useMemo, type FC } from "react";
 import { createPortal } from "react-dom";
-import { useFloorDataSuspense } from "@/hooks/suspense";
-import { floorService } from "@/services/floor";
-import { MapEditorStore, type CopiedInfo, type LayerMod } from "./MapEditorStore";
+import {
+  useFloorDataSuspense,
+  useModelResourceSuspense,
+  useTowerDataSuspense,
+} from "@/hooks/suspense";
+import {
+  MAP_EVENT_FIELDS,
+  mapCommands,
+  type MapLayer,
+} from "@/project/commands/mapCommands";
+import { projectModel, type RegistryBlockInfo } from "@/project/model/projectModel";
+import { setCurrentFloorId } from "@/stores/editorState";
+import { setCurrentLocPos } from "@/stores/locState";
+import { notifyCommandResult, notifyError } from "@/utils/notify";
+import { MapEditorStore, type CopiedInfo } from "./MapEditorStore";
 import { formatLoc } from "./utils/coordinate";
 import type { BlockInfo } from "./MaterialPanel/types";
 
@@ -36,6 +48,18 @@ interface MenuItem {
   onClick: () => void;
 }
 
+function registryBlockToBlockInfo(block: RegistryBlockInfo): BlockInfo {
+  const record = block as RegistryBlockInfo & { cls?: string; images?: string; y?: number };
+  return {
+    ...record,
+    idnum: block.idnum,
+    id: record.id ?? "",
+    images: record.images ?? record.cls ?? "terrains",
+    y: typeof record.y === "number" ? record.y : block.idnum,
+    isTile: block.kind === "tileset",
+  };
+}
+
 /**
  * ContextMenu 组件
  */
@@ -48,9 +72,13 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   onSelectBlock,
 }) => {
   const [floor] = useFloorDataSuspense(floorId);
+  const [tower] = useTowerDataSuspense();
+  const blockRegistryResource = useMemo(() => projectModel.blockRegistry(), []);
+  const blockRegistry = useModelResourceSuspense(blockRegistryResource);
   const store = MapEditorStore.useStore();
   const { state } = store;
   const { pos, layerMod, copiedInfo } = state;
+  const floorIds = (tower.main?.floorIds ?? []) as string[];
 
   // 获取当前图层的地图数据
   const getLayerMap = useCallback(() => {
@@ -67,8 +95,15 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   // 获取当前位置的图块
   const getCurrentBlock = useCallback(() => {
     const map = getLayerMap();
-    return map[pos[1]]?.[pos[0]] as BlockInfo | number | 0 | undefined;
-  }, [getLayerMap, pos]);
+    const cell = map[pos[1]]?.[pos[0]] as BlockInfo | number | 0 | undefined;
+    if (cell == null || cell === 0) return 0;
+    if (typeof cell === "number") {
+      const block = blockRegistry.get(cell);
+      if (block) return registryBlockToBlockInfo(block);
+      return { idnum: cell, id: "", images: "terrains", y: cell } as BlockInfo;
+    }
+    return cell;
+  }, [getLayerMap, pos, blockRegistry]);
 
   // 关闭菜单
   const handleClose = useCallback(() => {
@@ -100,7 +135,7 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   const handleChooseInRight = useCallback(() => {
     const block = getCurrentBlock();
     if (block !== undefined) {
-      onSelectBlock?.(block as BlockInfo | 0);
+      onSelectBlock?.(block);
     }
     handleClose();
   }, [getCurrentBlock, onSelectBlock, handleClose]);
@@ -113,17 +148,7 @@ export const ContextMenu: FC<ContextMenuProps> = ({
 
     // 收集事件数据
     const events: Record<string, unknown> = {};
-    const eventFields = [
-      "events",
-      "beforeBattle",
-      "afterBattle",
-      "afterGetItem",
-      "afterOpenDoor",
-      "changeFloor",
-      "autoEvent",
-    ];
-
-    for (const field of eventFields) {
+    for (const field of MAP_EVENT_FIELDS) {
       const fieldData = floor[field as keyof typeof floor] as
         | Record<string, unknown>
         | undefined;
@@ -150,9 +175,9 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   }, [getLayerMap, pos, floor, layerMod, store, handleClose]);
 
   // 粘贴到此事件
-  const handlePaste = useCallback(() => {
+  const handlePaste = useCallback(async () => {
     if (!copiedInfo) {
-      printe?.("没有复制的事件");
+      notifyError("没有复制的事件");
       handleClose();
       return;
     }
@@ -163,114 +188,52 @@ export const ContextMenu: FC<ContextMenuProps> = ({
       return;
     }
 
-    const actions: Array<["change", string, unknown]> = [];
-    const loc = formatLoc(pos);
+    const result = await mapCommands.pasteInfo({
+      floorId,
+      layer: layerMod as MapLayer,
+      pos: { x: pos[0], y: pos[1] },
+      info: copiedInfo,
+    });
 
-    // 粘贴地图数据
-    actions.push(["change", `['${layerMod}'][${pos[1]}][${pos[0]}]`, data.map]);
-
-    // 如果来源是 map 层且目标也是 map 层，粘贴事件
-    if (copiedInfo.layer === "map" && layerMod === "map") {
-      const eventFields = [
-        "events",
-        "beforeBattle",
-        "afterBattle",
-        "afterGetItem",
-        "afterOpenDoor",
-        "changeFloor",
-        "autoEvent",
-      ];
-
-      for (const field of eventFields) {
-        if (data.events[field] !== undefined) {
-          actions.push([
-            "change",
-            `['${field}']['${loc}']`,
-            structuredClone(data.events[field]),
-          ]);
-        } else {
-          // 清除原有事件
-          actions.push(["change", `['${field}']['${loc}']`, undefined]);
-        }
-      }
+    if (notifyCommandResult(result, "粘贴到事件成功")) {
+      store.setHasUnsavedChanges(true);
     }
-
-    floorService.saveFloor(floorId, actions);
-    store.setHasUnsavedChanges(true);
     handleClose();
-    printf?.("粘贴到事件成功");
   }, [copiedInfo, pos, layerMod, floorId, store, handleClose]);
 
   // 仅清空此点事件
-  const handleClearEvent = useCallback(() => {
-    const loc = formatLoc(pos);
-    const actions: Array<["change", string, unknown]> = [];
-
-    const eventFields = [
-      "events",
-      "beforeBattle",
-      "afterBattle",
-      "afterGetItem",
-      "afterOpenDoor",
-      "changeFloor",
-      "autoEvent",
-    ];
-
-    for (const field of eventFields) {
-      actions.push(["change", `['${field}']['${loc}']`, undefined]);
+  const handleClearEvent = useCallback(async () => {
+    const result = await mapCommands.clearEvents(floorId, { x: pos[0], y: pos[1] });
+    if (notifyCommandResult(result, "只清空该点事件成功")) {
+      store.setHasUnsavedChanges(true);
     }
-
-    floorService.saveFloor(floorId, actions);
-    store.setHasUnsavedChanges(true);
     handleClose();
-    printf?.("只清空该点事件成功");
   }, [pos, floorId, store, handleClose]);
 
   // 清空此点及事件
-  const handleClearLoc = useCallback(() => {
-    const loc = formatLoc(pos);
-    const actions: Array<["change", string, unknown]> = [];
-
-    // 清空地图数据
-    actions.push(["change", `['${layerMod}'][${pos[1]}][${pos[0]}]`, 0]);
-
-    // 清空事件
-    if (layerMod === "map") {
-      const eventFields = [
-        "events",
-        "beforeBattle",
-        "afterBattle",
-        "afterGetItem",
-        "afterOpenDoor",
-        "changeFloor",
-        "autoEvent",
-      ];
-
-      for (const field of eventFields) {
-        actions.push(["change", `['${field}']['${loc}']`, undefined]);
-      }
+  const handleClearLoc = useCallback(async () => {
+    const result = await mapCommands.clearLoc(floorId, layerMod as MapLayer, {
+      x: pos[0],
+      y: pos[1],
+    });
+    if (notifyCommandResult(result, "清空该点和事件成功")) {
+      store.setHasUnsavedChanges(true);
     }
-
-    floorService.saveFloor(floorId, actions);
-    store.setHasUnsavedChanges(true);
     handleClose();
-    printf?.("清空该点和事件成功");
   }, [pos, layerMod, floorId, store, handleClose]);
 
   // 判断是否显示附加事件菜单项
   const getExtraEventInfo = useCallback(() => {
     const block = getCurrentBlock();
-    if (block === 0 || block === undefined) {
-      return { visible: true, label: "绑定出生点为此点" };
-    }
-
-    if (typeof block !== "object") return null;
-
     const loc = formatLoc(pos);
     const changeFloor = floor.changeFloor as Record<string, unknown> | undefined;
 
     if (changeFloor?.[loc]) {
       return { visible: true, label: "跳转到目标传送点" };
+    }
+
+    if (block === 0 || block === undefined) {
+      return { visible: true, label: "绑定出生点为此点" };
     }
 
     if (block.id === "upFloor") {
@@ -297,14 +260,65 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   }, [getCurrentBlock, pos, floor]);
 
   // 处理附加事件
-  const handleExtraEvent = useCallback(() => {
+  const handleExtraEvent = useCallback(async () => {
     const info = getExtraEventInfo();
     if (!info) return;
 
-    // TODO: 实现具体的附加事件绑定逻辑
+    const currentPos = { x: pos[0], y: pos[1] };
+    const loc = formatLoc(pos);
+    const changeFloor = floor.changeFloor as Record<string, unknown> | undefined;
+    const block = getCurrentBlock();
+
+    if (changeFloor?.[loc]) {
+      const result = mapCommands.resolveChangeFloorTarget(floorId, currentPos, floorIds);
+      if (result.ok) {
+        const { target } = result;
+        store.pushRecentFloor(floorId);
+        store.setCurrentFloorId(target.floorId);
+        setCurrentFloorId(target.floorId);
+        if (target.pos) {
+          store.setPos([target.pos.x, target.pos.y]);
+          store.setViewportOffset([
+            Math.max(0, (target.pos.x - 6) * 32),
+            Math.max(0, (target.pos.y - 6) * 32),
+          ]);
+          setCurrentLocPos(target.pos, target.floorId);
+        }
+        printf?.("已跳转到目标传送点");
+      } else {
+        notifyCommandResult(result, "");
+      }
+      handleClose();
+      return;
+    }
+
+    if (block === 0 || block === undefined) {
+      const result = await mapCommands.bindStartPoint(floorId, currentPos);
+      notifyCommandResult(result, "绑定出生点成功");
+      handleClose();
+      return;
+    }
+
+    if (block.id === "specialDoor") {
+      const countText = window.prompt("请输入需要绑定的怪物数量", "1");
+      const count = Number(countText);
+      if (!Number.isInteger(count) || count <= 0) {
+        notifyError("机关门绑定数量不合法");
+        handleClose();
+        return;
+      }
+      store.setBindSpecialDoor({ loc, enemys: [], n: count });
+      printf?.("请依次点击需要绑定的怪物");
+      handleClose();
+      return;
+    }
+
+    const result = await mapCommands.bindStair(floorId, currentPos, block.id);
+    if (notifyCommandResult(result, `${info.label}成功`)) {
+      store.setHasUnsavedChanges(true);
+    }
     handleClose();
-    printf?.(`${info.label} 功能待完善`);
-  }, [getExtraEventInfo, handleClose]);
+  }, [getExtraEventInfo, pos, floor, getCurrentBlock, floorId, floorIds, store, handleClose]);
 
   // 构建菜单项
   const extraEventInfo = getExtraEventInfo();
@@ -356,6 +370,7 @@ export const ContextMenu: FC<ContextMenuProps> = ({
   return createPortal(
     <div
       id="midMenu"
+      data-test-id="context-menu"
       style={{
         position: "fixed",
         top: y,
@@ -373,6 +388,7 @@ export const ContextMenu: FC<ContextMenuProps> = ({
         <div
           key={item.id}
           className="menuitem"
+          data-test-id={`context-menu-${item.id}`}
           onClick={item.onClick}
           style={{
             padding: "8px 12px",

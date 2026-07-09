@@ -13,41 +13,44 @@ import { CommonEventPanel } from "./CommonEventPanel";
 import { FunctionsPanel } from "./FunctionsPanel";
 import { CodeEditor } from "./CodeEditor";
 import { MapEditor } from "@/MapEditor";
+import { ContentBoundary } from "@/components/ContentBoundary";
 
 export const Workbench: FC = () => {
   return (
-    <div className="main">
-      <PanelSlot panelId="map">
-        <MapPanel />
-      </PanelSlot>
-      <PanelSlot panelId="appendpic">
-        <AppendPicPanel />
-      </PanelSlot>
-      <PanelSlot panelId="loc">
-        <LocPanel />
-      </PanelSlot>
-      <PanelSlot panelId="enemyitem">
-        <PrefabPanel />
-      </PanelSlot>
-      <PanelSlot panelId="floor">
-        <FloorPanel />
-      </PanelSlot>
-      <PanelSlot panelId="tower">
-        <TowerPanel />
-      </PanelSlot>
-      <EventsEditor />
-      <ColorPanel />
-      <CodeEditor />
-      <PanelSlot panelId="functions">
-        <FunctionsPanel />
-      </PanelSlot>
-      <PanelSlot panelId="commonevent">
-        <CommonEventPanel />
-      </PanelSlot>
-      <PanelSlot panelId="plugins">
-        <PluginPanel />
-      </PanelSlot>
-      <MapEditor />
-    </div>
+    <ContentBoundary>
+      <div className="main">
+        <PanelSlot panelId="map">
+          <MapPanel />
+        </PanelSlot>
+        <PanelSlot panelId="appendpic">
+          <AppendPicPanel />
+        </PanelSlot>
+        <PanelSlot panelId="loc">
+          <LocPanel />
+        </PanelSlot>
+        <PanelSlot panelId="enemyitem">
+          <PrefabPanel />
+        </PanelSlot>
+        <PanelSlot panelId="floor">
+          <FloorPanel />
+        </PanelSlot>
+        <PanelSlot panelId="tower">
+          <TowerPanel />
+        </PanelSlot>
+        <EventsEditor />
+        <ColorPanel />
+        <CodeEditor />
+        <PanelSlot panelId="functions">
+          <FunctionsPanel />
+        </PanelSlot>
+        <PanelSlot panelId="commonevent">
+          <CommonEventPanel />
+        </PanelSlot>
+        <PanelSlot panelId="plugins">
+          <PluginPanel />
+        </PanelSlot>
+        <MapEditor />
+      </div>
+    </ContentBoundary>
   );
 }

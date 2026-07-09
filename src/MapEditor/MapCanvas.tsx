@@ -5,10 +5,16 @@
  * 迁移自 editor_mappanel.ts 的鼠标事件处理
  */
 
-import { useCallback, useEffect, useRef, type FC, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FC, type MouseEvent } from "react";
 import { useNode } from "@/hooks/useNode";
-import { useFloorDataSuspense } from "@/hooks/suspense";
+import { useModelResourceSuspense, useTowerDataSuspense } from "@/hooks/suspense";
+import { useData } from "@/hooks/useData";
+import { mapCommands, type MapLayer } from "@/project/commands/mapCommands";
+import { projectModel, type BlockRegistry, type RegistryBlockInfo } from "@/project/model/projectModel";
 import { floorService } from "@/services/floor";
+import type { FloorData } from "@/types";
+import { setCurrentLocPos } from "@/stores/locState";
+import { notifyCommandResult, notifyError } from "@/utils/notify";
 import type { LocPOD } from "@/utils/coordinate";
 import { MapEditorStore } from "./MapEditorStore";
 import { EventOverlay } from "./EventOverlay";
@@ -30,7 +36,8 @@ import {
   drawSelectionRectBigmap,
 } from "./utils/drawHelpers";
 import { fillModeBfs } from "./utils/fillBfs";
-import type { BlockInfo } from "./MaterialPanel/types";
+import type { BlockInfo, SelectedBlock } from "./MaterialPanel/types";
+import { MapPixiRenderer } from "./rendering/MapPixiRenderer";
 
 export interface MapCanvasProps {
   /** 楼层 ID */
@@ -39,6 +46,78 @@ export interface MapCanvasProps {
   onContextMenu?: (x: number, y: number) => void;
   /** 双击选中素材回调 */
   onDoubleClickSelect?: (block: BlockInfo | 0) => void;
+}
+
+type MapCell = unknown;
+
+interface DisplayFloorState {
+  floorId: string;
+  floor: FloorData;
+}
+
+function blockToSelectedBlock(block: RegistryBlockInfo): BlockInfo {
+  const record = block as RegistryBlockInfo & { cls?: string; images?: string; y?: number };
+  return {
+    ...record,
+    idnum: block.idnum,
+    id: record.id ?? "",
+    images: record.images ?? record.cls ?? "terrains",
+    y: typeof record.y === "number" ? record.y : block.idnum,
+    isTile: block.kind === "tileset",
+  };
+}
+
+function cellToSelectedBlock(cell: MapCell, registry: BlockRegistry): SelectedBlock | undefined {
+  if (cell == null) return undefined;
+  if (cell === 0) return 0;
+  if (typeof cell === "number") {
+    const block = registry.get(cell);
+    if (block) return blockToSelectedBlock(block);
+    return { idnum: cell, id: "", images: "terrains", y: cell };
+  }
+  if (typeof cell === "object") {
+    const record = cell as Partial<BlockInfo>;
+    if (typeof record.idnum === "number") return record as BlockInfo;
+  }
+  return undefined;
+}
+
+function parseLocKey(key: string): { x: number; y: number } | null {
+  const [x, y] = key.split(",").map(Number);
+  if (!Number.isInteger(x) || !Number.isInteger(y)) return null;
+  return { x, y };
+}
+
+function isEnemyBlock(block: SelectedBlock | undefined): boolean {
+  if (block === undefined || block === 0) return false;
+  return block.images === "enemys" || block.images === "enemy48";
+}
+
+function useDisplayFloor(floorId: string): DisplayFloorState & { isStale: boolean } {
+  const handler = useMemo(() => floorService.getHandler(floorId), [floorId]);
+  const [content] = useData(handler);
+  const [lastLoaded, setLastLoaded] = useState<DisplayFloorState | null>(null);
+
+  useEffect(() => {
+    if (content.status === "loaded") {
+      setLastLoaded({ floorId, floor: content.value });
+    }
+  }, [content, floorId]);
+
+  if (content.status === "idle") {
+    void handler.refetch();
+  }
+
+  if (content.status === "loaded") {
+    return { floorId, floor: content.value, isStale: false };
+  }
+
+  if (content.status === "loading" || content.status === "idle") {
+    if (lastLoaded) return { ...lastLoaded, isStale: true };
+    throw handler.waitForSettled();
+  }
+
+  throw handler;
 }
 
 /**
@@ -52,12 +131,20 @@ export const MapCanvas: FC<MapCanvasProps> = ({
   const [uiCanvas, mountUiCanvas] = useNode<HTMLCanvasElement>();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [floor, updateFloor] = useFloorDataSuspense(floorId);
+  const { floor, floorId: displayFloorId, isStale } = useDisplayFloor(floorId);
+  const [tower] = useTowerDataSuspense();
+  const tilesets = useMemo(
+    () => Array.isArray(tower.main.tilesets) ? tower.main.tilesets.filter((item): item is string => typeof item === "string") : [],
+    [tower.main.tilesets],
+  );
+  const blockRegistryResource = useMemo(() => projectModel.blockRegistry(), []);
+  const blockRegistry = useModelResourceSuspense(blockRegistryResource);
+  const spriteRegistryResource = useMemo(() => projectModel.spriteRegistry(), []);
+  const spriteRegistry = useModelResourceSuspense(spriteRegistryResource);
   const store = MapEditorStore.useStore();
   const { state } = store;
 
   const {
-    pos,
     selectedBlock,
     layerMod,
     brushMod,
@@ -119,8 +206,9 @@ export const MapCanvas: FC<MapCanvasProps> = ({
 
   // 鼠标按下
   const handleMouseDown = useCallback(
-    (e: MouseEvent) => {
+    async (e: MouseEvent) => {
       store.setSelectedArea(null);
+      if (isStale) return;
 
       const currentPos = getPos(e);
       store.setPos(currentPos);
@@ -129,11 +217,10 @@ export const MapCanvas: FC<MapCanvasProps> = ({
       if (bindSpecialDoor.loc !== null) {
         const loc = formatLoc(currentPos);
         const map = getLayerMap();
-        const cell = map[currentPos[1]]?.[currentPos[0]];
-        const cellId = typeof cell === "object" && cell ? cell.id : undefined;
+        const cell = map[currentPos[1]]?.[currentPos[0]] as unknown;
+        const block = cellToSelectedBlock(cell, blockRegistry);
 
-        // TODO: 检测是否是怪物，需要接入 enemyService
-        if (cellId) {
+        if (isEnemyBlock(block)) {
           const index = bindSpecialDoor.enemys.indexOf(loc);
           const newEnemys = [...bindSpecialDoor.enemys];
 
@@ -150,14 +237,36 @@ export const MapCanvas: FC<MapCanvasProps> = ({
 
           // 检查是否完成绑定
           if (newEnemys.length === bindSpecialDoor.n) {
-            // TODO: 执行机关门绑定操作
+            const doorPos = parseLocKey(bindSpecialDoor.loc);
+            if (!doorPos) {
+              notifyError(`机关门坐标不合法：${bindSpecialDoor.loc}`);
+              store.clearBindSpecialDoor();
+              return;
+            }
+
+            const result = await mapCommands.bindSpecialDoor(
+              displayFloorId,
+              doorPos,
+              newEnemys.map((key) => {
+                const parsed = parseLocKey(key);
+                if (!parsed) throw new Error(`怪物坐标不合法：${key}`);
+                return parsed;
+              }),
+            );
+            if (notifyCommandResult(result, "绑定机关门事件成功")) {
+              store.setHasUnsavedChanges(true);
+            }
+            store.clearBindSpecialDoor();
           }
+        } else {
+          notifyError("请选择怪物位置");
         }
         return;
       }
 
       // 未选中素材时进入选点模式
       if (!isBlockSelected()) {
+        setCurrentLocPos({ x: currentPos[0], y: currentPos[1] }, displayFloorId);
         store.setStartPos(currentPos);
         return;
       }
@@ -178,12 +287,15 @@ export const MapCanvas: FC<MapCanvasProps> = ({
     [
       store,
       getPos,
+      displayFloorId,
       bindSpecialDoor,
+      isStale,
       isBlockSelected,
       brushMod,
       uiCanvas,
       viewportOffset,
       getLayerMap,
+      blockRegistry,
       clearUiCanvas,
     ]
   );
@@ -191,6 +303,7 @@ export const MapCanvas: FC<MapCanvasProps> = ({
   // 鼠标移动
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      if (isStale) return;
       const currentPos = getPos(e);
 
       // 更新悬停位置（用于行列标记高亮）
@@ -303,6 +416,7 @@ export const MapCanvas: FC<MapCanvasProps> = ({
       startPos,
       endPos,
       store,
+      isStale,
       uiCanvas,
       bigmap,
       bigmapInfo,
@@ -316,11 +430,16 @@ export const MapCanvas: FC<MapCanvasProps> = ({
 
   // 鼠标抬起
   const handleMouseUp = useCallback(
-    (e: MouseEvent) => {
+    async (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
-      const currentPos = getPos(e);
+      if (isStale) {
+        store.clearStepPostfix();
+        clearUiCanvas();
+        store.clearDragState();
+        return;
+      }
 
       // 右键单击显示菜单
       if (e.button === 2 && (endPos === null || isSamePos(startPos, endPos))) {
@@ -339,8 +458,15 @@ export const MapCanvas: FC<MapCanvasProps> = ({
           printf?.("已经选中该区域");
         } else if (startPos && endPos && !isSamePos(startPos, endPos)) {
           // 左键拖拽：交换位置
-          // TODO: 实现 exchangePos 功能
-          printf?.("交换位置功能待实现");
+          const result = await mapCommands.exchangeLoc({
+            floorId: displayFloorId,
+            layer: layerMod as MapLayer,
+            from: { x: startPos[0], y: startPos[1] },
+            to: { x: endPos[0], y: endPos[1] },
+          });
+          if (notifyCommandResult(result, "交换位置成功")) {
+            store.setHasUnsavedChanges(true);
+          }
         }
         clearUiCanvas();
         store.clearDragState();
@@ -402,37 +528,27 @@ export const MapCanvas: FC<MapCanvasProps> = ({
         );
       }
 
-      // 应用修改
-      const actions: Array<["change", string, unknown]> = [];
-
-      for (const [px, py] of positions) {
-        const path = `['${layerMod}'][${py}][${px}]`;
-        actions.push(["change", path, selectedBlock]);
-
-        // 自动绑定楼梯事件
-        if (layerMod === "map" && selectedBlock && typeof selectedBlock === "object") {
-          const loc = `${px},${py}`;
-          if (selectedBlock.id === "upFloor") {
-            actions.push([
-              "change",
-              `['changeFloor']['${loc}']`,
-              { floorId: ":next", stair: "downFloor" },
-            ]);
-          } else if (selectedBlock.id === "downFloor") {
-            actions.push([
-              "change",
-              `['changeFloor']['${loc}']`,
-              { floorId: ":before", stair: "upFloor" },
-            ]);
+      if (positions.length > 0) {
+        try {
+          const result = await mapCommands.paint({
+            floorId: displayFloorId,
+            layer: layerMod as MapLayer,
+            positions: positions.map(([x, y]) => ({ x, y })),
+            block: selectedBlock,
+          });
+          if (result.ok) {
+            store.setHasUnsavedChanges(true);
+            // TODO: 更新最近使用记录
+          } else {
+            notifyCommandResult(result, "");
           }
+        } catch (error) {
+          notifyError(error);
+        } finally {
+          store.clearStepPostfix();
+          clearUiCanvas();
         }
-      }
-
-      if (actions.length > 0) {
-        floorService.saveFloor(floorId, actions);
-        store.setHasUnsavedChanges(true);
-
-        // TODO: 更新最近使用记录
+        return;
       }
 
       store.clearStepPostfix();
@@ -454,7 +570,8 @@ export const MapCanvas: FC<MapCanvasProps> = ({
       getLayerMap,
       layerMod,
       selectedBlock,
-      floorId,
+      displayFloorId,
+      isStale,
     ]
   );
 
@@ -468,21 +585,23 @@ export const MapCanvas: FC<MapCanvasProps> = ({
   const handleDoubleClick = useCallback(
     (e: MouseEvent) => {
       if (bindSpecialDoor.loc !== null) return;
+      if (isStale) return;
 
       const currentPos = getPos(e);
       const map = getLayerMap();
       const cell = map[currentPos[1]]?.[currentPos[0]];
+      const block = cellToSelectedBlock(cell, blockRegistry);
 
-      if (cell !== undefined) {
-        onDoubleClickSelect?.(cell as BlockInfo | 0);
+      if (block !== undefined) {
+        onDoubleClickSelect?.(block);
       }
     },
-    [bindSpecialDoor, getPos, getLayerMap, onDoubleClickSelect]
+    [bindSpecialDoor, isStale, getPos, getLayerMap, blockRegistry, onDoubleClickSelect]
   );
 
   // 滚轮切换楼层
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    () => {
       // 如果有未保存的修改，不允许切换楼层
       if (state.hasUnsavedChanges) return;
 
@@ -503,23 +622,27 @@ export const MapCanvas: FC<MapCanvasProps> = ({
       className="map"
       id="mapEdit"
     >
-      {/* 背景层 Canvas */}
-      <canvas
-        className="gameCanvas"
-        id="ebm"
-        width={CANVAS_SIZE}
-        height={CANVAS_SIZE}
+      {/* 背景层 Pixi 渲染 */}
+      <MapPixiRenderer
+        floor={floor}
+        blockRegistry={blockRegistry}
+        spriteRegistry={spriteRegistry}
+        tilesets={tilesets}
+        activeLayer={layerMod as "bgmap" | "map" | "fgmap"}
+        bigmap={bigmap}
+        viewportOffset={viewportOffset}
       />
       {/* 事件标记层 */}
-      <EventOverlay floorId={floorId} />
+      <EventOverlay floorId={displayFloorId} />
       {/* UI 交互层 Canvas */}
       <canvas
         ref={mountUiCanvas}
         className="gameCanvas"
         id="eui"
+        data-test-id="map-canvas-input"
         width={CANVAS_SIZE}
         height={CANVAS_SIZE}
-        style={{ position: "absolute", zIndex: 100 }}
+        style={{ position: "absolute", zIndex: 100, pointerEvents: isStale ? "none" : undefined }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

@@ -5,6 +5,7 @@
  */
 
 import type { FieldConfig } from '../types';
+import { evaluateTableMetaExpression } from '@/project/tableMeta/TableMetaEvaluator';
 
 /**
  * Check if a value is within the allowed range defined by the field configuration.
@@ -31,15 +32,7 @@ import type { FieldConfig } from '../types';
 export function checkRange(cobj: FieldConfig, value: unknown): boolean {
   // Check _range expression if defined
   if (cobj._range) {
-    try {
-      // Create a function that evaluates the range expression with 'thiseval' as the value
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      const checkFn = new Function('thiseval', `return (${cobj._range})`);
-      return Boolean(checkFn(value));
-    } catch {
-      // If evaluation fails, consider it invalid
-      return false;
-    }
+    return evaluateTableMetaExpression(cobj._range, value).value ?? false;
   }
   
   // Check _select values if defined

@@ -51,8 +51,11 @@ function stringifyFloorData(data: FloorData): string {
  * FloorDataHandler - 楼层数据处理器
  */
 export class FloorDataHandler extends DataHandler<FloorData> {
-  constructor(fileHandler: FileHandler, private floorId: string) {
+  private readonly floorId: string;
+
+  constructor(fileHandler: FileHandler, floorId: string) {
     super(fileHandler, `Floor ${floorId}`);
+    this.floorId = floorId;
   }
 
   /**

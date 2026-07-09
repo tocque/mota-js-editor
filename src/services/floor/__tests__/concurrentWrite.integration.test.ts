@@ -17,7 +17,6 @@ import { floorService } from "../floorService";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import { FileHandler } from "@/fs/FileHandler";
 import { MemoryFileSystem } from "@test/utils/MemoryFileSystem";
-import { encode64 } from "@/utils/encoding";
 import { serializeToJsMapFile } from "@/utils/serialize";
 import { wait } from "@test/utils/testHelpers";
 import type { FloorData } from "@/types";
@@ -69,12 +68,10 @@ describe("并发写入集成测试", () => {
       cannotMove: data.cannotMove ?? {},
     };
 
-    const content = serializeToJsMapFile(floorId, floorData);
-    const encoded = encode64(content);
     const path = `project/floors/${floorId}.js`;
 
     // 设置文件内容
-    memoryFs.setFile(path, encoded);
+    memoryFs.setFile(path, serializeToJsMapFile(floorId, floorData));
 
     // 创建 FileHandler 并加载
     const handler = new FileHandler(path, memoryFs.createFsInterface());

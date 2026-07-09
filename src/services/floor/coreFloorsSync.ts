@@ -91,7 +91,7 @@ export function addFloorSync(floorId: string): void {
     // 只在成功加载时同步
     if (content && ContentUtils.isLoaded(content)) {
       // 同步更新 core.floors（无延迟）
-      core.floors[floorId] = content.value as unknown as ResolvedMap;
+      core.floors[floorId] = content.value as unknown as (typeof core.floors)[string];
     }
   });
   

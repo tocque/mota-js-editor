@@ -1,197 +1,120 @@
-import { floorService } from "@/services/floor";
-import { useGameCoreInitialized } from "@/stores/GameDataStore";
+import { useEffect, useMemo, type FC, useRef, useState } from "react";
+import { floorCommands, mapCommands } from "@/project/commands";
+import { formatMapMatrixText, parseMapMatrixText } from "@/project/commands/mapMatrix";
+import { projectModel } from "@/project/model/projectModel";
+import {
+  useFloorDataSuspense,
+  useModelResourceSuspense,
+  useTowerDataSuspense,
+} from "@/hooks/suspense";
+import { setCurrentFloorId, useCurrentFloorId } from "@/stores/editorState";
+import { notifyCommandResult, notifyError, notifySuccess } from "@/utils/notify";
 import { isValidFloorId } from "@/utils/string";
-import { type FC, useRef, useState } from "react";
 import { BatchCreateMapsForm } from "./BatchCreateMapsForm";
 
 export const MapPanel: FC = () => {
+  const [tower] = useTowerDataSuspense();
+  const currentFloorId = useCurrentFloorId();
+  const floorId = currentFloorId ?? tower.firstData?.floorId ?? tower.main.floorIds[0] ?? "MT0";
+  const [floor] = useFloorDataSuspense(floorId);
+  const blockRegistryResource = useMemo(() => projectModel.blockRegistry(), []);
+  const blockRegistry = useModelResourceSuspense(blockRegistryResource);
   const [poutValue, setPoutValue] = useState("");
-  const [newMapWidth, setNewMapWidth] = useState("");
-  const [newMapHeight, setNewMapHeight] = useState("");
+  const [newMapWidth, setNewMapWidth] = useState("13");
+  const [newMapHeight, setNewMapHeight] = useState("13");
   const [newFileName, setNewFileName] = useState("");
   const [newMapStatus, setNewMapStatus] = useState(true);
   const [batchCreateMapsFormVisible, setBatchCreateMapsFormVisible] = useState(false);
 
   const poutRef = useRef<HTMLTextAreaElement>(null);
 
-  useGameCoreInitialized((core) => {
-    setNewMapWidth(core.__SIZE__);
-    setNewMapHeight(core.__SIZE__);
-  });
-
-  const formatArr = function() {
-    let formatArrStr = "";
-
-    const si = editor.map.length, sk = editor.map[0].length;
-    if (poutValue.split(/\D+/).join(" ").trim().split(" ").length != si * sk) return false;
-    const arr = poutValue.replace(/\s+/g, "").split("],[");
-
-    if (arr.length != si) return;
-    for (let i = 0; i < si; i++) {
-      let a = [];
-      formatArrStr += "[";
-      if (i == 0 || i == si - 1) a = arr[i].split(/\D+/).join(" ").trim().split(" ");
-      else a = arr[i].split(/\D+/);
-      if (a.length != sk) {
-        formatArrStr = "";
-        return;
-      }
-
-      for (let k = 0; k < sk; k++) {
-        const num = parseInt(a[k]);
-        formatArrStr += Array(Math.max(4 - String(num).length, 0)).join(" ") + num + (k == sk - 1 ? "" : ",");
-      }
-      formatArrStr += "]" + (i == si - 1 ? "" : ",\n");
+  useEffect(() => {
+    if (!currentFloorId && floorId) {
+      setCurrentFloorId(floorId);
     }
-    return formatArrStr;
-  };
+  }, [currentFloorId, floorId]);
+
+  const width = floor.width ?? floor.map?.[0]?.length ?? 13;
+  const height = floor.height ?? floor.map?.length ?? 13;
 
   const exportMap = () => {
-    editor.updateMap();
-    const sx = editor.map.length - 1, sy = editor.map[0].length - 1;
-
-    let filestr = "";
-    for (let yy = 0; yy <= sy; yy++) {
-      filestr += "[";
-      for (let xx = 0; xx <= sx; xx++) {
-        let mapxy = editor.map[yy][xx];
-        if (typeof mapxy == typeof ({})) {
-          if ("idnum" in mapxy) mapxy = mapxy.idnum;
-          else {
-            printe("生成失败! 地图中有未定义的图块，建议先用其他有效图块覆盖或点击清除地图！");
-            return;
-          }
-        } else if (typeof mapxy == "undefined") {
-          printe("生成失败! 地图中有未定义的图块，建议先用其他有效图块覆盖或点击清除地图！");
-          return;
-        }
-        mapxy = String(mapxy);
-        mapxy = Array(Math.max(4 - mapxy.length, 0)).join(" ") + mapxy;
-        filestr += mapxy + (xx == sx ? "" : ",");
-      }
-
-      filestr += "]" + (yy == sy ? "" : ",\n");
-    }
-    setPoutValue(filestr);
-    if (formatArr()) {
+    try {
+      const filestr = formatMapMatrixText(floor.map ?? []);
+      setPoutValue(filestr);
       if (poutRef.current) {
+        poutRef.current.value = filestr;
         poutRef.current.focus();
         poutRef.current.setSelectionRange(0, filestr.length);
         document.execCommand("Copy");
       }
-      printf("导出并复制成功！");
-    } else {
-      printe("无法导出并复制此地图，可能有不合法块。");
+      notifySuccess("导出并复制成功！");
+    } catch (error) {
+      notifyError(error);
     }
   };
 
-  const importMap = () => {
-    const sy = editor.map.length, sx = editor.map[0].length;
-    let mapArray = null;
-    let value = poutValue.trim();
-    // 去除可能末尾的 ','
-    if (value.endsWith(",")) value = value.substring(0, value.length - 1);
+  const importMap = async () => {
     try {
-      mapArray = JSON.parse(value);
-    } catch (e) {
-      console.log(e);
-    }
-    try {
-      mapArray = mapArray || JSON.parse("[" + value + "]");
-    } catch (e) {
-      console.log(e);
-    }
-    if (mapArray == null || mapArray.length != sy || mapArray[0].length != sx) {
-      printe("格式错误！请使用正确格式(请使用地图生成器进行生成，且需要和本地图宽高完全一致)");
-      return;
-    }
-    let hasError = false;
-    for (let y = 0; y < sy; y++) {
-      for (let x = 0; x < sx; x++) {
-        const num = mapArray[y][x];
-        if (num == 0) {
-          editor.map[y][x] = 0;
-        } else if (editor.indexs[num] == null || editor.indexs[num][0] == null) {
-          printe("当前有未定义ID（在地图区域显示红块），请用有效的图块进行覆盖！");
-          hasError = true;
-          editor.map[y][x] = {};
-        } else editor.map[y][x] = editor.ids[[editor.indexs[num][0]]];
+      const mapArray = parseMapMatrixText(poutValue, { width, height });
+      for (let y = 0; y < mapArray.length; y += 1) {
+        for (let x = 0; x < mapArray[y].length; x += 1) {
+          const idnum = mapArray[y][x];
+          if (!blockRegistry.has(idnum)) {
+            notifyError("当前有未定义ID（在地图区域显示红块），请用有效的图块进行覆盖！");
+            return;
+          }
+        }
       }
+      const result = await mapCommands.replaceLayer(floorId, "map", mapArray);
+      notifyCommandResult(result, "地图导入成功！");
+    } catch (error) {
+      notifyError(error instanceof Error ? `格式错误！${error.message}` : error);
     }
-    editor.updateMap();
-    if (!hasError) printf("地图导入成功！");
   };
 
-  const clearMap = () => {
+  const clearMap = async () => {
     if (!confirm("你确定要清除地图上所有内容么？此过程不可逆！")) return;
-    editor.mapInit();
-    editor_mode.onmode("");
-    editor.file.saveFloorFile((err) => {
-      if (err) {
-        printe(err);
-        throw err;
-      }
-      printf("地图清除成功");
-    });
-    editor.updateMap();
+    const result = await mapCommands.clearFloorMap(floorId);
+    notifyCommandResult(result, "地图清除成功");
   };
 
-  // 使用 floorService.deleteFloor 删除地图
   const deleteMap = async () => {
     if (!confirm("你确定要删除此地图么？此过程不可逆！")) return;
-    editor_mode.onmode("");
-
-    try {
-      await floorService.deleteFloor(editor.currentFloorId);
-      printe("删除成功,请F5刷新编辑器生效");
-    } catch (err) {
-      printe(String(err));
-      throw err;
+    const result = await floorCommands.delete(floorId);
+    if (notifyCommandResult(result, "删除成功")) {
+      const remaining = tower.main.floorIds.filter((id) => id !== floorId);
+      setCurrentFloorId(remaining[0] ?? "");
     }
   };
 
-  // 使用 floorService.createFloor 创建新地图
   const createNewMap = async () => {
     if (!newFileName) return;
 
-    // 检查是否已存在（不区分大小写）
-    const findFunc = function(id: string) {
-      const re = new RegExp(newFileName, "i");
-      return re.test(id);
-    };
-    if (core.floorIds.find(findFunc) != null) {
-      printe("同名楼层已存在！(不区分大小写)");
+    if (tower.main.floorIds.some((id) => id.toLowerCase() === newFileName.toLowerCase())) {
+      notifyError("同名楼层已存在！(不区分大小写)");
       return;
     }
 
-    // 验证楼层名格式
     if (!isValidFloorId(newFileName)) {
-      printe("楼层名不合法！请使用字母、数字、下划线，且不能以数字开头！");
+      notifyError("楼层名不合法！请使用字母、数字、下划线，且不能以数字开头！");
       return;
     }
 
-    const width = parseInt(newMapWidth);
-    const height = parseInt(newMapHeight);
-    if (Number.isNaN(width) || Number.isNaN(height) || width > 128 || height > 128) {
-      printe("新建地图的宽高都不得大于128");
+    const nextWidth = parseInt(newMapWidth, 10);
+    const nextHeight = parseInt(newMapHeight, 10);
+    if (Number.isNaN(nextWidth) || Number.isNaN(nextHeight) || nextWidth > 128 || nextHeight > 128) {
+      notifyError("新建地图的宽高都不得大于128");
       return;
     }
 
-    editor_mode.onmode("");
-
-    try {
-      // 使用 floorService.createFloor 创建楼层
-      // 它会自动创建文件并更新 floorIds
-      await floorService.createFloor(newFileName, {
-        title: newMapStatus ? undefined : newFileName, // saveStatus=true 时保留默认标题
-        name: newMapStatus ? undefined : newFileName,
-        width,
-        height,
-      });
-      printe("新建成功,请F5刷新编辑器生效");
-    } catch (err) {
-      printe(String(err));
-      throw err;
+    const result = await floorCommands.create(newFileName, {
+      title: newMapStatus ? undefined : newFileName,
+      name: newMapStatus ? undefined : newFileName,
+      width: nextWidth,
+      height: nextHeight,
+    });
+    if (notifyCommandResult(result, "新建成功")) {
+      setCurrentFloorId(newFileName);
     }
   };
 
@@ -200,7 +123,7 @@ export const MapPanel: FC = () => {
   };
 
   return (
-    <div id="left" className="leftTab">
+    <div id="left" className="leftTab" data-test-id="panel-map">
       {/* map */}
       <div id="arrEditor">
         <table className="col" id="arrColMark" />
@@ -211,14 +134,16 @@ export const MapPanel: FC = () => {
             cols={10}
             rows={10}
             id="pout"
+            data-test-id="map-panel-textarea"
             value={poutValue}
             onChange={(e) => setPoutValue(e.target.value)}
           />
         </div>
         <div id="editTip">
-          <input type="button" defaultValue="新建空白地图" onClick={createNewMap} />
+          <input type="button" defaultValue="新建空白地图" onClick={createNewMap} data-test-id="map-create-submit" />
           <input
             id="newFileName"
+            data-test-id="map-create-id"
             placeholder="新楼层id"
             style={{ width: 70 }}
             value={newFileName}
@@ -227,6 +152,7 @@ export const MapPanel: FC = () => {
           <span style={{ verticalAlign: "bottom" }}>宽</span>
           <input
             id="newMapWidth"
+            data-test-id="map-create-width"
             style={{ width: 20 }}
             value={newMapWidth}
             onChange={(e) => setNewMapWidth(e.target.value)}
@@ -234,6 +160,7 @@ export const MapPanel: FC = () => {
           <span style={{ verticalAlign: "bottom" }}>高</span>
           <input
             id="newMapHeight"
+            data-test-id="map-create-height"
             style={{ width: 20 }}
             value={newMapHeight}
             onChange={(e) => setNewMapHeight(e.target.value)}
@@ -250,12 +177,12 @@ export const MapPanel: FC = () => {
           </span>
         </div>
         <div id="editBtns">
-          <input type="button" defaultValue="导出并复制地图" id="exportMap" onClick={exportMap} />
-          <input type="button" defaultValue="从框中导入地图" id="importMap" onClick={importMap} />
-          <input type="button" defaultValue="清除地图" id="clearMapButton" onClick={clearMap} />
-          <input type="button" defaultValue="删除地图" id="deleteMap" onClick={deleteMap} />
+          <input type="button" defaultValue="导出并复制地图" id="exportMap" onClick={exportMap} data-test-id="map-export-submit" />
+          <input type="button" defaultValue="从框中导入地图" id="importMap" onClick={importMap} data-test-id="map-import-submit" />
+          <input type="button" defaultValue="清除地图" id="clearMapButton" onClick={clearMap} data-test-id="map-clear-submit" />
+          <input type="button" defaultValue="删除地图" id="deleteMap" onClick={deleteMap} data-test-id="map-delete-submit" />
         </div>
-        <input type="button" defaultValue="批量创建空白地图 ↓" id="newMaps" onClick={toggleBatchCreateMapsForm} />
+        <input type="button" defaultValue="批量创建空白地图 ↓" id="newMaps" onClick={toggleBatchCreateMapsForm} data-test-id="map-batch-toggle" />
         <BatchCreateMapsForm visible={batchCreateMapsFormVisible} />
       </div>
     </div>

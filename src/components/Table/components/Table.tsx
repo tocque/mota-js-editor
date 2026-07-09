@@ -24,7 +24,7 @@ export const Table: FC<TableProps> = (props) => {
   const { data, commentObj, onChange, onOpenExternalEditor, editMode } = props;
 
   return (
-    <div className="etable">
+    <div className="etable" data-test-id="data-table">
       <FoldStore.Provider>
         <DataStore.Provider
           argument={{
@@ -35,7 +35,7 @@ export const Table: FC<TableProps> = (props) => {
             editMode,
           }}
         >
-          <table>
+          <table data-test-id="data-table-grid">
             <thead>
               <TableHeader />
             </thead>

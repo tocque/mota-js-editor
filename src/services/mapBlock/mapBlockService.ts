@@ -10,11 +10,11 @@
  * - 内存数据源 + 异步落盘
  */
 
-import { produce } from "immer";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import type { Content } from "@/fs";
-import { applyActions, type Action } from "@/utils/action";
+import type { Action } from "@/utils/action";
 import { MapsBlocksDataHandler } from "./MapsBlocksDataHandler";
+import { projectData } from "@/project/data/projectData";
 
 /** 地图块数据文件路径 */
 const MAPS_BLOCKS_DATA_PATH = "project/maps.js";
@@ -113,22 +113,12 @@ class MapBlockServiceImpl {
 
     const idnumStr = String(idnum);
 
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 将 actions 的路径前缀加上地图块 idnum
-        const prefixedActions: Action[] = actions.map(([type, path, value]) => [
-          type,
-          `['${idnumStr}']${path}`,
-          value,
-        ]);
-
-        applyActions(draft as unknown as Record<string, unknown>, prefixedActions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
+    const prefixedActions: Action[] = actions.map(([type, path, value]) => [
+      type,
+      `['${idnumStr}']${path}`,
+      value,
+    ]);
+    void projectData.mapBlocks().patch(prefixedActions);
   }
 
   /**
@@ -139,28 +129,7 @@ class MapBlockServiceImpl {
       return;
     }
 
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        applyActions(draft as unknown as Record<string, unknown>, actions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
-  }
-
-  /**
-   * 同步数据到全局变量（兼容 legacy 代码）
-   */
-  private syncToGlobal(data: MapsBlocksData): void {
-    if (typeof maps_90f36752_8815_4be8_b32b_d7fad1d0542e !== "undefined") {
-      // 清空并复制新数据
-      const global = maps_90f36752_8815_4be8_b32b_d7fad1d0542e;
-      for (const key of Object.keys(global)) {
-        delete global[key];
-      }
-      Object.assign(global, data);
-    }
+    void projectData.mapBlocks().patch(actions);
   }
 
   /**

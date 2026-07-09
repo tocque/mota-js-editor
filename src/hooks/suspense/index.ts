@@ -15,3 +15,6 @@ export { useLocTableMetaSuspense } from "./useLocTableMetaSuspense";
 export { useEditorReadySuspense } from "./useEditorReadySuspense";
 export { useTernDefsSuspense } from "./useTernDefsSuspense";
 export { useDataSuspense } from "./useDataSuspense";
+export { useResourceSuspense } from "./useResourceSuspense";
+export { useModelResourceSuspense } from "./useModelResourceSuspense";
+export type { ResourceUpdateFn } from "./useResourceSuspense";

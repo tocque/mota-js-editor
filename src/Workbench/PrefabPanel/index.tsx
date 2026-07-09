@@ -6,68 +6,34 @@
  */
 
 import { useCallback, useMemo, useState, type FC } from "react";
-import { cloneDeep } from "es-toolkit";
 import { ContentLeftTab } from "../components/ContentLeftTab";
 import { Table, EditModeSegmented } from "@/components/Table";
 import { useTableMetaEditor } from "@/components/Table/hooks";
 import { useTableMetaSuspense } from "@/hooks";
-import { useDataSuspense } from "@/hooks/suspense";
-import { prefabService, type PrefabInfo } from "@/services/prefab";
-import { enemyService, type EnemysData } from "@/services/enemy";
-import { itemService, type ItemsData } from "@/services/item";
-import { useCurrentPrefabInfo } from "@/stores/prefabState";
-import type { IDataHandler } from "@/fs/interfaces";
+import { useResourceSuspense } from "@/hooks/suspense";
+import { materialCommands, prefabCommands, runtimeCommands } from "@/project/commands";
+import { notifyCommandResult, notifyError, notifySuccess } from "@/utils/notify";
+import { type PrefabInfo } from "@/services/prefab";
+import { PanelStore } from "@/stores/PanelStore";
+import { setAppendPicTemplate } from "@/stores/appendPicState";
+import { useCurrentPrefabSelection } from "@/stores/prefabState";
+import {
+  canCopyPastePrefab,
+  getPrefabComment,
+  getPrefabItemData,
+  resolvePrefabTarget,
+  type PrefabTarget,
+} from "@/project/model/prefabModel";
 import type { Action } from "@/utils/action";
-import type { MapsBlocksData } from "@/services/mapBlock";
 import type { EditMode, TableAction } from "@/components/Table/types";
+import type { ClearPrefabTemplates, PrefabClipboardData } from "@/project/commands/prefabCommands";
 import type { CommentObject } from "@/components/Table";
 
-type PrefabData = EnemysData | ItemsData | MapsBlocksData;
-
-/**
- * 根据 prefabInfo.images 获取对应的 commentObj 子对象
- */
-function getCommentObjForPrefab(
-  meta: CommentObject,
-  info: PrefabInfo | null
-): CommentObject | null {
-  if (!info?.images) return null;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metaData = (meta as any)?._data;
-  if (!metaData) return null;
-
-  if (info.images === "enemys" || info.images === "enemy48") {
-    return metaData.enemys || null;
-  } else if (info.images === "items") {
-    return metaData.items || null;
-  } else {
-    return metaData.maps || null;
-  }
-}
-
-/**
- * 获取当前图块的数据项
- */
-function getPrefabItemData(
-  data: Record<string, unknown> | null,
-  info: PrefabInfo | null
-): Record<string, unknown> | null {
-  if (!data || !info) return null;
-
-  const type = prefabService.getPrefabType(info);
-
-  switch (type) {
-    case "enemy":
-    case "item":
-      return info.id ? (data[info.id] as Record<string, unknown>) : null;
-    case "mapBlock":
-      return info.idnum !== undefined
-        ? (data[String(info.idnum)] as Record<string, unknown>)
-        : null;
-    default:
-      return null;
-  }
+function getClearPrefabTemplates(meta: CommentObject): ClearPrefabTemplates {
+  const metaData = (meta as { _data?: { enemys_template?: Record<string, unknown> } })._data;
+  return {
+    enemy: metaData?.enemys_template,
+  };
 }
 
 // ==================== 未注册图块区域 ====================
@@ -79,65 +45,60 @@ interface NewIdIdnumSectionProps {
 const NewIdIdnumSection: FC<NewIdIdnumSectionProps> = ({ info }) => {
   const [newId, setNewId] = useState("");
   const [newIdnum, setNewIdnum] = useState("");
+  const { setActivePanel } = PanelStore.useStore();
 
-  const handleAddIdIdnum = useCallback(() => {
+  const handleAddIdIdnum = useCallback(async () => {
     if (newId && newIdnum) {
       const id = newId;
       const idnum = parseInt(newIdnum);
       if (Number.isNaN(idnum)) {
-        printe("不合法的idnum");
+        notifyError("不合法的idnum");
         return;
       }
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(id)) {
-        printe("不合法的id，请使用字母、数字或下划线，且不能以数字开头");
+        notifyError("不合法的id，请使用字母、数字或下划线，且不能以数字开头");
         return;
       }
       if (id === "hero" || id === "this" || id === "none" || id === "airwall") {
-        printe("不得使用保留关键字作为id！");
+        notifyError("不得使用保留关键字作为id！");
         return;
       }
-      if ((core.statusBar as Record<string, Record<string, unknown>>)?.icons?.[id] != null) {
+      if (materialCommands.hasStatusBarIcon(id)) {
         alert(
           "警告！此ID在状态栏图标中被注册；仍然允许使用，但是\\i[]等绘制可能出现冲突。"
         );
       }
-      editor?.file?.changeIdAndIdnum(id, idnum, info, (err: string | null) => {
-        if (err) {
-          printe(err);
-          throw err;
-        }
-        printe("添加id和idnum成功,请F5刷新编辑器");
-      });
+      const result = await materialCommands.changeIdAndIdnum(id, idnum, info);
+      notifyCommandResult(result, "添加id和idnum成功");
     } else {
-      printe("请输入id和idnum");
+      notifyError("请输入id和idnum");
     }
   }, [newId, newIdnum, info]);
 
-  const handleAutoRegister = useCallback(() => {
-    editor?.file?.autoRegister(info, (err: string | null) => {
-      if (err) {
-        printe(err);
-        throw err;
-      }
-      printe("该列所有剩余项全部自动注册成功,请F5刷新编辑器");
-    });
+  const handleAutoRegister = useCallback(async () => {
+    const bindFaceIds = (info.images === "npc48" || info.images === "enemy48")
+      && confirm("你想绑定图块的朝向么？\n如果是，则会将最后四个注册图块的faceIds进行自动绑定。");
+    const result = await materialCommands.register(info, { bindFaceIds });
+    notifyCommandResult(result, "该列所有剩余项全部自动注册成功");
   }, [info]);
 
-  const handleRemoveMaterial = useCallback(() => {
+  const handleRemoveMaterial = useCallback(async () => {
     if (!confirm("警告！你确定要删除此素材吗？此过程不可逆！")) return;
-    editor?.file?.removeMaterial(info, (err: string | null) => {
-      if (err) {
-        printe(err);
-        throw err;
-      }
+    const result = await materialCommands.remove(info);
+    if (notifyCommandResult(result, "删除此素材成功！")) {
       alert("删除此素材成功！");
       window.location.reload();
-    });
+    }
   }, [info]);
 
   const handleAppendMaterial = useCallback(() => {
-    editor?.uifunctions?.appendMaterialByInfo(info);
-  }, [info]);
+    if (info.isTile) {
+      notifyError("额外素材不支持此功能！");
+      return;
+    }
+    setAppendPicTemplate(info);
+    setActivePanel("appendpic");
+  }, [info, setActivePanel]);
 
   return (
     <div id="newIdIdnum">
@@ -180,46 +141,42 @@ interface ChangeIdSectionProps {
 
 const ChangeIdSection: FC<ChangeIdSectionProps> = ({ info }) => {
   const [changeIdValue, setChangeIdValue] = useState("");
+  const { setActivePanel } = PanelStore.useStore();
 
-  const handleChangeId = useCallback(() => {
+  const handleChangeId = useCallback(async () => {
     const id = changeIdValue;
     if (id) {
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(id)) {
-        printe("不合法的id，请使用字母、数字或下划线，且不能以数字开头");
+        notifyError("不合法的id，请使用字母、数字或下划线，且不能以数字开头");
         return;
       }
       if (id === "hero" || id === "this" || id === "none" || id === "airwall") {
-        printe("不得使用保留关键字作为id！");
+        notifyError("不得使用保留关键字作为id！");
         return;
       }
       if (info.images === "autotile") {
-        printe("自动元件不可修改id！");
+        notifyError("自动元件不可修改id！");
         return;
       }
       if (info.idnum !== undefined && info.idnum >= 10000) {
-        printe("额外素材不可修改id！");
+        notifyError("额外素材不可修改id！");
         return;
       }
-      if ((core.statusBar as Record<string, Record<string, unknown>>)?.icons?.[id] != null) {
+      if (materialCommands.hasStatusBarIcon(id)) {
         alert(
           "警告！此ID在状态栏图标中被注册；仍然允许使用，但是\\i[]等绘制可能出现冲突。"
         );
       }
-      editor?.file?.changeIdAndIdnum(id, null, info, (err: string | null) => {
-        if (err) {
-          printe(err);
-          throw err;
-        }
-        printe("修改id成功,请F5刷新编辑器");
-      });
+      const result = await materialCommands.changeIdAndIdnum(id, null, info);
+      notifyCommandResult(result, "修改id成功");
     } else {
-      printe("请输入要修改到的ID");
+      notifyError("请输入要修改到的ID");
     }
   }, [changeIdValue, info]);
 
-  const handleDeletePrefab = useCallback(() => {
+  const handleDeletePrefab = useCallback(async () => {
     if (info.isTile) {
-      printe("额外素材不可删除！");
+      notifyError("额外素材不可删除！");
       return;
     }
     if (
@@ -228,19 +185,21 @@ const ChangeIdSection: FC<ChangeIdSectionProps> = ({ info }) => {
       )
     )
       return;
-    editor?.file?.removeMaterial(info, (err: string | null) => {
-      if (err) {
-        printe(err);
-        return;
-      }
+    const result = await materialCommands.remove(info);
+    if (notifyCommandResult(result, "删除此素材成功！")) {
       alert("删除此素材成功！");
       window.location.reload();
-    });
+    }
   }, [info]);
 
   const handleAppendPrefab = useCallback(() => {
-    editor?.uifunctions?.appendMaterialByInfo(info);
-  }, [info]);
+    if (info.isTile) {
+      notifyError("额外素材不支持此功能！");
+      return;
+    }
+    setAppendPicTemplate(info);
+    setActivePanel("appendpic");
+  }, [info, setActivePanel]);
 
   return (
     <div id="changeId">
@@ -264,40 +223,39 @@ const ChangeIdSection: FC<ChangeIdSectionProps> = ({ info }) => {
 // ==================== 图块属性表格区域 ====================
 
 interface EnemyItemTableSectionProps {
-  info: PrefabInfo;
-  handler: IDataHandler<PrefabData>;
+  target: PrefabTarget;
   editMode: EditMode;
 }
 
 const EnemyItemTableSection: FC<EnemyItemTableSectionProps> = ({
-  info,
-  handler,
+  target,
   editMode,
 }) => {
+  const { info } = target;
   // 使用 Suspense hooks
-  const [allData] = useDataSuspense(handler);
+  const [allData] = useResourceSuspense(target.resource);
   const meta = useTableMetaSuspense("comment");
 
   // 获取当前图块的数据项
   const itemData = useMemo(
-    () => getPrefabItemData(allData as Record<string, unknown>, info),
-    [allData, info]
+    () => getPrefabItemData(allData as Record<string, unknown>, target),
+    [allData, target]
   );
 
   // 获取对应的 commentObj
   const commentObj = useMemo(
-    () => getCommentObjForPrefab(meta, info),
-    [meta, info]
+    () => getPrefabComment(meta, target),
+    [meta, target]
   );
 
   // 统一的变更处理 - 即时保存
   const handleChange = useCallback(
     async (action: TableAction) => {
       try {
-        prefabService.savePrefabData(info, [action]);
-        printf?.("保存成功！");
+        const result = await prefabCommands.patch(info, [action as Action]);
+        notifyCommandResult(result, "保存成功！");
       } catch (err) {
-        printe?.(String(err));
+        notifyError(err);
       }
     },
     [info]
@@ -308,163 +266,86 @@ const EnemyItemTableSection: FC<EnemyItemTableSectionProps> = ({
   const CLIPBOARD_PREFIX = "mota-prefab:";
 
   const handleCopyEnemyItem = useCallback(async () => {
-    const prefabType = prefabService.getPrefabType(info);
-    if (!prefabType || prefabType === "mapBlock") return;
-
-    const id = info.id;
-    let data: unknown;
-    let typeLabel: string;
-
-    if (prefabType === "enemy") {
-      data = enemyService.getEnemy(id!);
-      typeLabel = "怪物";
-    } else {
-      data = itemService.getItem(id!);
-      typeLabel = "道具";
+    const result = prefabCommands.getClipboardData(info, allData as Record<string, unknown>);
+    if (!result.ok || !result.data) {
+      notifyCommandResult(result, "");
+      return;
     }
-
-    const clipboardData = JSON.stringify({ type: prefabType, data });
-    await navigator.clipboard.writeText(CLIPBOARD_PREFIX + clipboardData);
-    printf(`${typeLabel}属性已复制到剪贴板`);
-  }, [info]);
+    await navigator.clipboard.writeText(CLIPBOARD_PREFIX + JSON.stringify(result.data));
+    notifySuccess(`${result.data.type === "enemy" ? "怪物" : "道具"}属性已复制到剪贴板`);
+  }, [info, allData]);
 
   const handlePasteEnemyItem = useCallback(async () => {
-    const prefabType = prefabService.getPrefabType(info);
+    const prefabType = target.type;
     if (!prefabType || prefabType === "mapBlock") return;
 
     try {
       const text = await navigator.clipboard.readText();
       if (!text.startsWith(CLIPBOARD_PREFIX)) {
-        printe("剪贴板内容不是有效的图块数据");
+        notifyError("剪贴板内容不是有效的图块数据");
         return;
       }
 
-      const { type, data } = JSON.parse(text.slice(CLIPBOARD_PREFIX.length));
-      if (type !== prefabType) {
-        printe(`类型不匹配：剪贴板中是${type === "enemy" ? "怪物" : "道具"}数据`);
+      const clipboard = JSON.parse(text.slice(CLIPBOARD_PREFIX.length)) as PrefabClipboardData;
+      if (clipboard.type !== prefabType) {
+        notifyError(`类型不匹配：剪贴板中是${clipboard.type === "enemy" ? "怪物" : "道具"}数据`);
         return;
       }
 
-      const id = info.id;
       if (prefabType === "enemy") {
         if (!confirm("你确定要覆盖此怪物的全部属性么？这是个不可逆操作！")) return;
-        const currentEnemy = enemyService.getEnemy(id!);
-        const newEnemy = {
-          ...cloneDeep(data),
-          id,
-          name: currentEnemy?.name,
-          displayIdInBook: currentEnemy?.displayIdInBook,
-        };
-        const action: Action = ["change", `['${id}']`, newEnemy];
-        enemyService.saveEnemysData([action]);
-        printf("怪物属性粘贴成功\n请再重新选中该怪物方可查看更新后的表格。");
+        const result = await prefabCommands.replaceFromClipboard(info, clipboard, allData as Record<string, unknown>);
+        notifyCommandResult(result, "怪物属性粘贴成功");
       } else {
         if (!confirm("你确定要覆盖此道具的全部属性么？这是个不可逆操作！")) return;
-        const currentItem = itemService.getItem(id!);
-        const newItem = {
-          ...cloneDeep(data),
-          id,
-          name: currentItem?.name,
-        };
-        const action: Action = ["change", `['${id}']`, newItem];
-        itemService.saveItemsData([action]);
-        printf("道具属性粘贴成功\n请再重新选中该道具方可查看更新后的表格。");
+        const result = await prefabCommands.replaceFromClipboard(info, clipboard, allData as Record<string, unknown>);
+        notifyCommandResult(result, "道具属性粘贴成功");
       }
     } catch {
-      printe("剪贴板内容解析失败");
+      notifyError("剪贴板内容解析失败");
     }
-  }, [info]);
+  }, [target, info, allData]);
 
-  const handleClearEnemyItem = useCallback(() => {
-    const cls = info.images;
-    if (!cls) return;
-    const id = info.id;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const metaData = (meta as any)?._data;
-    if (cls === "enemys" || cls === "enemy48") {
+  const handleClearEnemyItem = useCallback(async () => {
+    const templates = getClearPrefabTemplates(meta);
+    if (target.type === "enemy") {
       if (confirm("你确定要清空本怪物的全部属性么？这是个不可逆操作！")) {
-        const currentEnemy = enemyService.getEnemy(id!);
-        const newEnemy = {
-          ...cloneDeep(metaData?.enemys_template),
-          id,
-          name: currentEnemy?.name,
-          displayIdInBook: currentEnemy?.displayIdInBook,
-        };
-        const action: Action = ["change", `['${id}']`, newEnemy];
-        enemyService.saveEnemysData([action]);
-        printf("怪物属性清空成功\n请再重新选中该怪物方可查看更新后的表格。");
+        const result = await prefabCommands.clear(info, templates, allData as Record<string, unknown>);
+        notifyCommandResult(result, "怪物属性清空成功");
       }
-    } else if (cls === "items") {
+    } else if (target.type === "item") {
       if (confirm("你确定要清空本道具的全部属性么？这是个不可逆操作！")) {
-        const currentItem = itemService.getItem(id!);
-        // 只保留 id, cls, name
-        const newItem = {
-          id: currentItem?.id,
-          cls: currentItem?.cls,
-          name: currentItem?.name,
-        };
-        const action: Action = ["change", `['${id}']`, newItem];
-        itemService.saveItemsData([action]);
-        printf("道具属性清空成功\n请再重新选中该道具方可查看更新后的表格。");
+        const result = await prefabCommands.clear(info, templates, allData as Record<string, unknown>);
+        notifyCommandResult(result, "道具属性清空成功");
       }
     }
-  }, [info, meta]);
+  }, [target, info, meta, allData]);
 
-  const handleClearAllEnemyItem = useCallback(() => {
-    const cls = info.images;
-    if (!cls) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const metaData = (meta as any)?._data;
-    if (cls === "enemys" || cls === "enemy48") {
+  const handleClearAllEnemyItem = useCallback(async () => {
+    const templates = getClearPrefabTemplates(meta);
+    if (target.type === "enemy") {
       if (
         confirm(
           "你确定要批量清空【全塔怪物】的全部属性么？这是个不可逆操作！"
         )
       ) {
-        const enemysData = enemyService.getEnemysData();
-        const actions: Action[] = Object.keys(enemysData).map((id) => {
-          const currentEnemy = enemysData[id];
-          const newEnemy = {
-            ...cloneDeep(metaData?.enemys_template),
-            id,
-            name: currentEnemy?.name,
-            displayIdInBook: currentEnemy?.displayIdInBook,
-          };
-          return ["change", `['${id}']`, newEnemy];
-        });
-        enemyService.saveEnemysData(actions);
-        printf("全塔全部怪物属性清空成功！");
+        const result = await prefabCommands.clearAll(info, templates, allData as Record<string, unknown>);
+        notifyCommandResult(result, "全塔全部怪物属性清空成功！");
       }
-    } else if (cls === "items") {
+    } else if (target.type === "item") {
       if (
         confirm(
           "你确定要批量清空【全塔所有自动注册且未修改ID的道具】的全部属性么？这是个不可逆操作！"
         )
       ) {
-        const itemsData = itemService.getItemsData();
-        const actions: Action[] = Object.keys(itemsData)
-          .filter((id) => /^I\d+$/.test(id))
-          .map((id) => {
-            const currentItem = itemsData[id];
-            // 只保留 id, cls, name
-            const newItem = {
-              id: currentItem?.id,
-              cls: currentItem?.cls,
-              name: currentItem?.name,
-            };
-            return ["change", `['${id}']`, newItem];
-          });
-        itemService.saveItemsData(actions);
-        printf("全塔全部道具属性清空成功！");
+        const result = await prefabCommands.clearAll(info, templates, allData as Record<string, unknown>);
+        notifyCommandResult(result, "全塔全部道具属性清空成功！");
       }
     }
-  }, [info, meta]);
+  }, [target, info, meta, allData]);
 
   // 显示复制/粘贴按钮（仅对 enemy 和 item 类型）
-  const showCopyPasteButtons =
-    info.images === "enemys" ||
-    info.images === "enemy48" ||
-    info.images === "items";
+  const showCopyPasteButtons = canCopyPastePrefab(target);
 
   if (!itemData || !commentObj) {
     return <div>无数据</div>;
@@ -505,21 +386,21 @@ interface PrefabPanelContentProps {
 }
 
 const PrefabPanelContent: FC<PrefabPanelContentProps> = ({ editMode }) => {
-  const info = useCurrentPrefabInfo();
+  const selection = useCurrentPrefabSelection();
+  const info = selection?.info ?? null;
+  const target = useMemo(() => resolvePrefabTarget(info), [info]);
 
   // 如果没有选中图块，显示空状态
   if (!info || Object.keys(info).length === 0) {
-    return <div>请选择一个图块</div>;
+    return <div data-test-id="prefab-empty-state">请选择一个图块</div>;
   }
 
   // 如果没有 id，显示新建区域
-  if (!info.id) {
+  if (target && !target.registered) {
     return <NewIdIdnumSection info={info} />;
   }
 
-  // 获取 handler，如果无效则不渲染表格
-  const handler = prefabService.getHandler(info);
-  if (!handler) {
+  if (!target) {
     return (
       <>
         <div>无法加载数据</div>
@@ -531,7 +412,7 @@ const PrefabPanelContent: FC<PrefabPanelContentProps> = ({ editMode }) => {
   // 否则显示编辑区域
   return (
     <>
-      <EnemyItemTableSection info={info} handler={handler} editMode={editMode} />
+      <EnemyItemTableSection target={target} editMode={editMode} />
       <ChangeIdSection info={info} />
     </>
   );
@@ -552,19 +433,16 @@ export const PrefabPanel: FC = () => {
   // 使用 useTableMetaEditor 获取编辑器打开函数
   const { openEditor } = useTableMetaEditor("comment");
 
-  // 保存按钮点击处理
-  const handleSave = useCallback(() => {
-    editor?.mode.onmode("save");
-  }, []);
-
   // 添加按钮点击处理
   const handleAdd = useCallback(() => {
-    editor?.mode.changeDoubleClickModeByButton("add");
+    const result = runtimeCommands.changeDoubleClickMode("add");
+    if (!result.ok) notifyCommandResult(result, "");
   }, []);
 
   // 删除按钮点击处理
   const handleDelete = useCallback(() => {
-    editor?.mode.changeDoubleClickModeByButton("delete");
+    const result = runtimeCommands.changeDoubleClickMode("delete");
+    if (!result.ok) notifyCommandResult(result, "");
   }, []);
 
   // 配置表格按钮点击处理
@@ -575,8 +453,6 @@ export const PrefabPanel: FC = () => {
   // 操作按钮区域（始终显示）
   const actions = (
     <>
-      <button onClick={handleSave}>保存</button>
-      &nbsp;&nbsp;
       <EditModeSegmented value={editMode} onChange={setEditMode} />
       &nbsp;&nbsp;
       <button onClick={handleAdd}>添加</button>
@@ -588,7 +464,7 @@ export const PrefabPanel: FC = () => {
   );
 
   return (
-    <ContentLeftTab id="left3" title="图块属性" actions={actions}>
+    <ContentLeftTab id="left3" testId="panel-prefab" title="图块属性" actions={actions}>
       <PrefabPanelContent editMode={editMode} />
     </ContentLeftTab>
   );

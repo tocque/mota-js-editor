@@ -308,12 +308,19 @@ describe("FileHandler", () => {
   });
 
   describe("错误处理", () => {
-    it("未加载时 update 应该抛出错误", () => {
+    it("未加载时直接设置值应该创建文件", async () => {
       const handler = new FileHandler("test.txt",  memoryFs.createFsInterface());
 
-      expect(() => {
-        handler.update("new");
-      }).toThrow("current status is idle");
+      handler.update("new");
+
+      const content = handler.getContent();
+      expect(ContentUtils.isLoaded(content)).toBe(true);
+      if (ContentUtils.isLoaded(content)) {
+        expect(content.value).toBe("new");
+      }
+
+      await handler.waitForIdle();
+      expect(memoryFs.getFile("test.txt")).toBe("new");
     });
 
     it("写入失败时不应该影响内存状态", async () => {

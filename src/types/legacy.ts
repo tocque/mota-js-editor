@@ -32,6 +32,8 @@ export interface EditorBlockly {
 
 /** open 函数配置选项 */
 export interface EditorMultiOpenConfig {
+  /** 旧 textarea 编辑器的字符串模式标记 */
+  isString?: boolean;
   /** 是否启用语法检查 */
   lint?: boolean;
   /** 预览数据 */

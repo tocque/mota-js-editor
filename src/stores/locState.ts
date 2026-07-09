@@ -13,8 +13,15 @@ export interface LocPos {
   y: number;
 }
 
+export interface LocSelection {
+  floorId?: string;
+  pos: LocPos;
+}
+
 interface LocState {
-  /** 当前选中的位置 */
+  /** 当前选中的地图游标 */
+  currentSelection: LocSelection | null;
+  /** @deprecated Use currentSelection instead. */
   currentPos: LocPos | null;
 }
 
@@ -24,6 +31,7 @@ interface LocState {
  * 初始值为 null，在 editor_mode.loc 被调用时更新
  */
 export const locStateStore = new Store<LocState>({
+  currentSelection: null,
   currentPos: null,
 });
 
@@ -32,11 +40,36 @@ export const locStateStore = new Store<LocState>({
  *
  * 在 editor_mode.loc 中调用
  */
-export function setCurrentLocPos(pos: LocPos | null): void {
+export function setCurrentLocPos(pos: LocPos | null, floorId?: string): void {
   locStateStore.setState((state) => ({
     ...state,
+    currentSelection: pos
+      ? {
+          floorId: floorId ?? state.currentSelection?.floorId,
+          pos,
+        }
+      : null,
     currentPos: pos,
   }));
+}
+
+/**
+ * 更新当前游标所在楼层，保留已选中的坐标。
+ */
+export function setCurrentLocFloorId(floorId: string): void {
+  locStateStore.setState((state) => ({
+    ...state,
+    currentSelection: state.currentSelection
+      ? { ...state.currentSelection, floorId }
+      : null,
+  }));
+}
+
+/**
+ * 获取当前地图游标 Hook。
+ */
+export function useCurrentLocSelection(): LocSelection | null {
+  return useStore(locStateStore, (state) => state.currentSelection);
 }
 
 /**
@@ -45,7 +78,7 @@ export function setCurrentLocPos(pos: LocPos | null): void {
  * 自动订阅状态变化，当 currentPos 变化时触发重渲染
  */
 export function useCurrentLocPos(): LocPos | null {
-  return useStore(locStateStore, (state) => state.currentPos);
+  return useStore(locStateStore, (state) => state.currentSelection?.pos ?? state.currentPos);
 }
 
 /**
@@ -54,5 +87,12 @@ export function useCurrentLocPos(): LocPos | null {
  * 用于非 React 环境
  */
 export function getCurrentLocPos(): LocPos | null {
-  return locStateStore.state.currentPos;
+  return locStateStore.state.currentSelection?.pos ?? locStateStore.state.currentPos;
+}
+
+/**
+ * 获取当前地图游标（非 Hook 版本）。
+ */
+export function getCurrentLocSelection(): LocSelection | null {
+  return locStateStore.state.currentSelection;
 }

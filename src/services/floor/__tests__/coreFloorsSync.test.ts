@@ -12,7 +12,6 @@ import { setupCoreFloorsSync, addFloorSync, removeFloorSync, stopCoreFloorsSync 
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import { FileHandler } from "@/fs/FileHandler";
 import { MemoryFileSystem } from "@test/utils/MemoryFileSystem";
-import { encode64 } from "@/utils/encoding";
 import { serializeToJsMapFile } from "@/utils/serialize";
 import type { FloorData } from "@/types";
 import type { Action } from "@/utils/action";
@@ -85,12 +84,10 @@ describe("coreFloorsSync", () => {
       cannotMove: data.cannotMove ?? {},
     };
 
-    const content = serializeToJsMapFile(floorId, floorData);
-    const encoded = encode64(content);
     const path = `project/floors/${floorId}.js`;
 
     // 设置文件内容
-    memoryFs.setFile(path, encoded);
+    memoryFs.setFile(path, serializeToJsMapFile(floorId, floorData));
 
     // 创建 FileHandler 并加载
     const handler = new FileHandler(path, memoryFs.createFsInterface());
@@ -375,7 +372,7 @@ describe("coreFloorsSync", () => {
     it("加载失败的楼层不应该同步", async () => {
       // 创建一个无效的文件
       const path = "project/floors/MT_INVALID.js";
-      memoryFs.setFile(path, encode64("invalid content"));
+      memoryFs.setFile(path, "invalid content");
 
       const handler = new FileHandler(path, memoryFs.createFsInterface());
       await handler.load();

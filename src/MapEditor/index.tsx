@@ -12,10 +12,53 @@ import { ToolBar } from "./ToolBar";
 import { MaterialPanel } from "./MaterialPanel";
 import { RecentlyUsedPanel } from "./RecentlyUsedPanel";
 import { RowColMarks } from "./RowColMarks";
+import { setCurrentFloorId, useCurrentFloorId } from "@/stores/editorState";
+import { setCurrentLocFloorId } from "@/stores/locState";
+import { setCurrentPrefabInfo } from "@/stores/prefabState";
+import { useResourceSuspense } from "@/hooks/suspense";
+import { projectData } from "@/project/data/projectData";
+import type { PrefabInfo } from "@/services/prefab";
 import type { SelectedBlock, BlockInfo } from "./MaterialPanel/types";
 
 /** 默认楼层 ID */
 const DEFAULT_FLOOR_ID = "MT0";
+
+function toPrefabInfo(block: SelectedBlock | undefined): PrefabInfo | null {
+  return block && typeof block === "object" ? { ...block } : null;
+}
+
+const FloorPreloader: FC<{ activeFloorId: string }> = ({ activeFloorId }) => {
+  const [tower] = useResourceSuspense(projectData.tower());
+  const floorIds = (tower.main?.floorIds ?? []).filter((id): id is string => typeof id === "string");
+  const floorIdsKey = floorIds.join("\n");
+
+  useEffect(() => {
+    let cancelled = false;
+    const orderedFloorIds = [
+      activeFloorId,
+      ...floorIds.filter((id) => id !== activeFloorId),
+    ].filter(Boolean);
+
+    void (async () => {
+      for (const floorId of orderedFloorIds) {
+        if (cancelled) return;
+        const resource = projectData.floor(floorId);
+        if (resource.content().status !== "idle") continue;
+        try {
+          await resource.reload();
+        } catch (error) {
+          console.warn(`Failed to preload floor ${floorId}`, error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFloorId, floorIdsKey]);
+
+  return null;
+};
 
 /**
  * 地图编辑器内部组件（需要 Store Provider）
@@ -29,16 +72,28 @@ const MapEditorInner: FC = () => {
   const store = MapEditorStore.useStore();
   const { state } = store;
   const { currentFloorId, selectedBlock } = state;
+  const externalFloorId = useCurrentFloorId();
 
   // 使用默认楼层 ID
-  const floorId = currentFloorId || DEFAULT_FLOOR_ID;
+  const floorId = currentFloorId || externalFloorId || DEFAULT_FLOOR_ID;
+
+  useEffect(() => {
+    if (externalFloorId && externalFloorId !== currentFloorId) {
+      store.setCurrentFloorId(externalFloorId);
+    }
+  }, [externalFloorId, currentFloorId, store]);
 
   // 初始化楼层 ID
   useEffect(() => {
-    if (!currentFloorId) {
+    if (!currentFloorId && !externalFloorId) {
       store.setCurrentFloorId(DEFAULT_FLOOR_ID);
+      setCurrentFloorId(DEFAULT_FLOOR_ID);
     }
-  }, [currentFloorId, store]);
+  }, [currentFloorId, externalFloorId, store]);
+
+  useEffect(() => {
+    setCurrentLocFloorId(floorId);
+  }, [floorId]);
 
   // 打印函数
   const print = useCallback((msg: string, cls: string) => {
@@ -68,6 +123,7 @@ const MapEditorInner: FC = () => {
   const handleSelectedBlockChange = useCallback(
     (block: SelectedBlock) => {
       store.setSelectedBlock(block);
+      setCurrentPrefabInfo(toPrefabInfo(block), "material");
     },
     [store]
   );
@@ -87,6 +143,7 @@ const MapEditorInner: FC = () => {
   const handleDoubleClickSelect = useCallback(
     (block: BlockInfo | 0) => {
       store.setSelectedBlock(block === 0 ? undefined : block);
+      setCurrentPrefabInfo(toPrefabInfo(block), "map");
     },
     [store]
   );
@@ -95,6 +152,7 @@ const MapEditorInner: FC = () => {
   const handleSelectBlockFromMenu = useCallback(
     (block: BlockInfo | 0) => {
       store.setSelectedBlock(block === 0 ? undefined : block);
+      setCurrentPrefabInfo(toPrefabInfo(block), "map");
     },
     [store]
   );
@@ -103,6 +161,7 @@ const MapEditorInner: FC = () => {
   const handleFloorChange = useCallback(
     (newFloorId: string) => {
       store.setCurrentFloorId(newFloorId);
+      setCurrentFloorId(newFloorId);
     },
     [store]
   );
@@ -119,6 +178,7 @@ const MapEditorInner: FC = () => {
         isTile: item.isTile,
       };
       store.setSelectedBlock(block);
+      setCurrentPrefabInfo(toPrefabInfo(block), "material");
     },
     [store]
   );
@@ -146,6 +206,9 @@ const MapEditorInner: FC = () => {
             tipClass={tipClass}
             onFloorChange={handleFloorChange}
           />
+        </Suspense>
+        <Suspense fallback={null}>
+          <FloorPreloader activeFloorId={floorId} />
         </Suspense>
       </div>
 

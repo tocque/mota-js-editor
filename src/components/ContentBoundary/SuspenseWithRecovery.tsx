@@ -7,7 +7,7 @@
  */
 
 import { Component, Suspense, type ReactNode } from "react";
-import type { IContentHandler } from "@/fs/interfaces";
+import type { IContentHandler, RecoverableResource } from "@/fs/interfaces";
 import { DataHandler } from "@/fs/DataHandler";
 import { FileHandler } from "@/fs/FileHandler";
 import {
@@ -35,6 +35,17 @@ interface State {
   handler: SuspenseHandler | null;
 }
 
+function isRecoverableResource(value: unknown): value is RecoverableResource {
+  return Boolean(
+    value
+      && typeof value === "object"
+      && "content" in value
+      && "refetch" in value
+      && "waitForSettled" in value
+      && "recoverable" in value,
+  );
+}
+
 /**
  * SuspenseWithRecovery 组件
  *
@@ -49,7 +60,7 @@ export class SuspenseWithRecovery extends Component<
   };
 
   static getDerivedStateFromError(thrown: unknown): Partial<State> | null {
-    if (thrown instanceof DataHandler || thrown instanceof FileHandler) {
+    if (thrown instanceof DataHandler || thrown instanceof FileHandler || isRecoverableResource(thrown)) {
       return { handler: thrown };
     }
     throw thrown;

@@ -7,119 +7,51 @@
 
 import { useCallback, useMemo, useState, type FC } from "react";
 import { ContentLeftTab } from "../components/ContentLeftTab";
-import { Table, EditModeSegmented } from "@/components/Table";
+import { EditModeSegmented } from "@/components/Table";
 import { useTableMetaEditor } from "@/components/Table/hooks";
 import { useLocTableMetaSuspense } from "@/hooks/suspense/useLocTableMetaSuspense";
-import { useCurrentLocPos } from "@/stores/locState";
+import { useCurrentLocSelection } from "@/stores/locState";
 import { useCurrentFloorId } from "@/stores/editorState";
-import { locService, LOC_FIELDS } from "@/services/loc";
-import { floorService } from "@/services/floor";
-import { useDataSuspense } from "@/hooks/suspense";
-import type { EditMode, TableAction } from "@/components/Table/types";
+import { useResourceSuspense } from "@/hooks/suspense";
+import { projectData } from "@/project/data/projectData";
+import { locCommands } from "@/project/commands/locCommands";
+import { resolveLocTarget } from "@/project/model/locModel";
+import { notifyCommandResult, notifyError, notifySuccess } from "@/utils/notify";
+import { LocTable } from "./LocTable";
+import type { EditMode } from "@/components/Table/types";
 import type { CommentObject } from "@/components/Table";
-
-// ==================== 表格内容区域 ====================
-
-interface LocTableSectionProps {
-  floorId: string;
-  pos: { x: number; y: number };
-  editMode: EditMode;
-}
-
-/**
- * 从楼层数据中提取指定位置的 loc 数据
- */
-function getLocDataFromFloor(
-  floorData: Record<string, unknown>,
-  pos: { x: number; y: number }
-): Record<string, unknown> {
-  const locKey = `${pos.x},${pos.y}`;
-  const locData: Record<string, unknown> = {};
-
-  for (const field of LOC_FIELDS) {
-    const fieldData = floorData[field];
-    if (fieldData && typeof fieldData === "object" && locKey in fieldData) {
-      locData[field] = (fieldData as Record<string, unknown>)[locKey];
-    } else {
-      locData[field] = null;
-    }
-  }
-
-  return locData;
-}
-
-const LocTableSection: FC<LocTableSectionProps> = ({
-  floorId,
-  pos,
-  editMode,
-}) => {
-  // 使用 Suspense hooks 获取数据
-  const handler = floorService.getHandler(floorId);
-  const [floorData] = useDataSuspense(handler);
-  const meta = useLocTableMetaSuspense();
-
-  // 从楼层数据中提取当前位置的 loc 数据
-  const locData = useMemo(
-    () => getLocDataFromFloor(floorData as Record<string, unknown>, pos),
-    [floorData, pos]
-  );
-
-  // 统一的变更处理 - 即时保存
-  const handleChange = useCallback(
-    (action: TableAction) => {
-      try {
-        locService.saveLocData(floorId, pos, [action]);
-        printf?.("保存成功！");
-      } catch (err) {
-        printe?.(String(err));
-      }
-    },
-    [floorId, pos]
-  );
-
-  if (!meta) {
-    return <div>无元数据</div>;
-  }
-
-  return (
-    <div id="locTable">
-      <Table
-        data={locData}
-        commentObj={meta as CommentObject}
-        onChange={handleChange}
-        editMode={editMode}
-      />
-    </div>
-  );
-};
 
 // ==================== 主内容组件 ====================
 
 interface LocPanelContentProps {
   editMode: EditMode;
+  floorId?: string;
 }
 
-const LocPanelContent: FC<LocPanelContentProps> = ({ editMode }) => {
-  const pos = useCurrentLocPos();
-  const floorId = useCurrentFloorId();
+const LocPanelContent: FC<LocPanelContentProps> = ({ editMode, floorId }) => {
+  const selection = useCurrentLocSelection();
+  const target = useMemo(
+    () => resolveLocTarget(selection, floorId),
+    [selection, floorId]
+  );
+  const meta = useLocTableMetaSuspense();
 
   // 如果没有选中位置，显示空状态
-  if (!pos) {
-    return <div>请选择一个位置</div>;
+  if (!selection) {
+    return <div data-test-id="loc-empty-state">请选择一个位置</div>;
   }
 
   // 如果没有当前楼层，显示空状态
-  if (!floorId) {
-    return <div>请先选择一个楼层</div>;
+  if (!target) {
+    return <div data-test-id="loc-empty-state">请先选择一个楼层</div>;
   }
 
   return (
-    <>
-      <p style={{ marginLeft: 15 }}>
-        {pos.x},{pos.y}
-      </p>
-      <LocTableSection floorId={floorId} pos={pos} editMode={editMode} />
-    </>
+    <LocTable
+      target={target}
+      meta={meta as CommentObject}
+      editMode={editMode}
+    />
   );
 };
 
@@ -132,8 +64,13 @@ const LocPanelContent: FC<LocPanelContentProps> = ({ editMode }) => {
  * actions 始终显示，不受数据加载状态影响
  */
 export const LocPanel: FC = () => {
-  const pos = useCurrentLocPos();
-  const floorId = useCurrentFloorId();
+  const selection = useCurrentLocSelection();
+  const [tower] = useResourceSuspense(projectData.tower());
+  const floorId = useCurrentFloorId() ?? tower.firstData?.floorId ?? tower.main.floorIds[0];
+  const target = useMemo(
+    () => resolveLocTarget(selection, floorId),
+    [selection, floorId]
+  );
 
   // 在 Panel 层维护 editMode（不依赖数据）
   const [editMode, setEditMode] = useState<EditMode>("change");
@@ -142,24 +79,33 @@ export const LocPanel: FC = () => {
   const { openEditor } = useTableMetaEditor("comment");
 
   // 保存按钮点击处理
-  const handleSave = useCallback(() => {
-    editor?.mode.onmode("save");
-  }, []);
+  const handleSave = useCallback(async () => {
+    if (!floorId) {
+      notifyError("请先选择一个楼层");
+      return;
+    }
+    await projectData.floor(floorId).waitForIdle();
+    notifySuccess("保存完成");
+  }, [floorId]);
 
   // 添加自动事件页
-  const handleAddAutoEvent = useCallback(() => {
-    if (!pos || !floorId) {
-      printe?.("请先选择一个位置");
+  const handleAddAutoEvent = useCallback(async () => {
+    if (!target) {
+      notifyError("请先选择一个位置");
       return;
     }
 
     try {
-      const newPageId = locService.addAutoEventPage(floorId, pos);
-      printf?.(`添加自动事件页 ${newPageId} 成功`);
+      const result = await locCommands.addAutoEventPage(target.floorId, target.pos);
+      if (result.ok) {
+        notifySuccess(`添加自动事件页 ${result.pageId} 成功`);
+      } else {
+        notifyCommandResult(result, "");
+      }
     } catch (err) {
-      printe?.(String(err));
+      notifyError(err);
     }
-  }, [pos, floorId]);
+  }, [target]);
 
   // 配置表格按钮点击处理
   const handleConfigure = useCallback(() => {
@@ -180,8 +126,8 @@ export const LocPanel: FC = () => {
   );
 
   return (
-    <ContentLeftTab id="left2" title="地图选点" actions={actions}>
-      <LocPanelContent editMode={editMode} />
+    <ContentLeftTab id="left2" testId="panel-loc" title="地图选点" actions={actions}>
+      <LocPanelContent editMode={editMode} floorId={floorId} />
     </ContentLeftTab>
   );
 };

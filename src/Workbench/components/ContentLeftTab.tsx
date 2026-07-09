@@ -19,6 +19,8 @@ import type { IContentHandler } from "@/fs/interfaces";
 export interface ContentLeftTabProps {
   /** 面板 ID，如 "left5" */
   id: string;
+  /** 稳定测试 ID */
+  testId?: string;
   /** 标题文本 */
   title: string;
   /** 标题栏右侧的操作按钮（始终显示） */
@@ -81,30 +83,27 @@ export interface ContentLeftTabProps {
 export const ContentLeftTab: FC<ContentLeftTabProps> = (props) => {
   const {
     id,
+    testId,
     title,
     actions,
     children,
     recoveryUI,
     loadingUI,
-    autoRetry,
-    autoRetryDelay,
   } = props;
 
   // 构建 ContentBoundary props
   const boundaryProps: Omit<SuspenseWithRecoveryProps, "children"> = {
     recoveryUI,
     loadingUI: loadingUI || <div className="leftTabLoading">加载中...</div>,
-    autoRetry,
-    autoRetryDelay,
   };
 
   return (
-    <div id={id} className="leftTab">
-      <h3 className="leftTabHeader">
+    <div id={id} className="leftTab" data-test-id={testId}>
+      <h3 className="leftTabHeader" data-test-id={testId ? `${testId}-header` : undefined}>
         {title}
         {actions && <>&nbsp;&nbsp;{actions}</>}
       </h3>
-      <div className="leftTabContent">
+      <div className="leftTabContent" data-test-id={testId ? `${testId}-content` : undefined}>
         <ContentBoundary {...boundaryProps}>{children}</ContentBoundary>
       </div>
     </div>

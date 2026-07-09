@@ -38,7 +38,7 @@ export interface MaterialImageProps {
   /** 当前选中的素材 ID 和格子位置 */
   selection: { id: string; gridLoc: LocPOD } | null;
   /** 点击事件 */
-  onClick: (id: string, info: SelectedBlock, gridLoc: LocPOD, grid: GridPOD) => void;
+  onClick: (id: string, gridLoc: LocPOD, grid: GridPOD) => void;
 }
 
 /** 素材面板 props */

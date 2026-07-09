@@ -16,6 +16,7 @@ import { Json2xDataHandler } from "@/fs/Json2xDataHandler";
 import type { Content } from "@/fs";
 import { applyActions, type Action } from "@/utils/action";
 import { ContentUtils } from "@/fs/ContentUtils";
+import { tableCommands } from "@/project/commands";
 
 /** 事件数据文件路径 */
 const EVENTS_DATA_PATH = "project/events.js";
@@ -140,20 +141,7 @@ class CommonEventServiceImpl {
       return;
     }
 
-    // 在 action 路径前添加 ['commonEvent'] 前缀
-    const prefixedActions: Action[] = actions.map((action) => [
-      action[0],
-      `['commonEvent']${action[1]}`,
-      action[2],
-    ]);
-
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 应用 actions
-        applyActions(draft as unknown as Record<string, unknown>, prefixedActions);
-      }),
-    );
+    void tableCommands.patchCommonEvents(actions);
   }
 
   /**

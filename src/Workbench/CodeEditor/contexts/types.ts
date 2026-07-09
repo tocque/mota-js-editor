@@ -82,6 +82,8 @@ export type MultiLineCallback = (newValue: string, b: unknown, f: unknown) => vo
  * 用于 editor_multi.open 的配置参数
  */
 export interface OpenConfig {
+  /** 旧 textarea 编辑器的字符串模式标记 */
+  isString?: boolean;
   /** 是否启用语法检查 */
   lint?: boolean;
   /** 预览数据 */

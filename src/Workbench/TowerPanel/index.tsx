@@ -26,8 +26,10 @@ function processMainFields(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mainCommentData = (commentObj as any)?._data?.main?._data;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorMain = (editor as any)?.main as
+  const win = typeof window === "undefined"
+    ? undefined
+    : (window as unknown as { editor?: { main?: Record<string, unknown> } });
+  const editorMain = win?.editor?.main as
     | Record<string, unknown>
     | undefined;
   const dataMain = data.main as Record<string, unknown> | undefined;
@@ -74,9 +76,11 @@ const TowerPanelContent: FC<TowerPanelContentProps> = ({ editMode }) => {
   const handleChange = useCallback(async (action: TableAction) => {
     try {
       towerService.saveTowerData([action as Action]);
-      printf?.("保存成功！");
+      const win = window as unknown as { printf?: (message: string) => void };
+      win.printf?.("保存成功！");
     } catch (err) {
-      printe?.(String(err));
+      const win = window as unknown as { printe?: (message: string) => void };
+      win.printe?.(String(err));
     }
   }, []);
 
@@ -118,7 +122,7 @@ export const TowerPanel: FC = () => {
   );
 
   return (
-    <ContentLeftTab id="left5" title="全塔属性" actions={actions}>
+    <ContentLeftTab id="left5" testId="panel-tower" title="全塔属性" actions={actions}>
       <TowerPanelContent editMode={editMode} />
     </ContentLeftTab>
   );

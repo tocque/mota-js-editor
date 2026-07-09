@@ -98,6 +98,11 @@ class FileHandlerManagerImpl {
    * 检查文件是否存在于文件系统
    */
   async exists(path: string): Promise<boolean> {
+    const handler = this.handlers.get(path);
+    const content = handler?.getContent();
+    if (content?.status === "loaded") return true;
+    if (content?.status === "not-found") return false;
+
     try {
       await fs.promises.readFile(path, "utf-8");
       return true;

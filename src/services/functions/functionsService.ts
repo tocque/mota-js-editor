@@ -15,6 +15,7 @@ import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import type { Content } from "@/fs";
 import { applyActions, type Action } from "@/utils/action";
 import { FunctionsDataHandler, type FunctionsData } from "./FunctionsDataHandler";
+import { tableCommands } from "@/project/commands";
 
 /** 脚本函数数据文件路径 */
 const FUNCTIONS_DATA_PATH = "project/functions.js";
@@ -114,13 +115,7 @@ class FunctionsServiceImpl {
       return;
     }
 
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 应用 actions
-        applyActions(draft as unknown as Record<string, unknown>, actions);
-      })
-    );
+    void tableCommands.patchFunctions(actions);
   }
 
   /**
@@ -145,10 +140,7 @@ class FunctionsServiceImpl {
    * console.log(preview.events.afterChangeLight);
    */
   previewChanges(actions: Action[]): FunctionsData {
-    // 获取当前数据
     const currentData = this.getFunctionsData();
-
-    // 使用 immer 创建草稿并应用 actions
     return produce(currentData, (draft) => {
       applyActions(draft as unknown as Record<string, unknown>, actions);
     });

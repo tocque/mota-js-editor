@@ -267,7 +267,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
   }, [handleDoubleClick]);
 
   return (
-    <tr data-field={dataField} onClick={handleClick}>
+    <tr data-field={dataField} data-test-id={`table-row-${dataField}`} onClick={handleClick}>
       {/* 字段名称列 */}
       <td title={field}>{shortField}</td>
 
@@ -278,7 +278,7 @@ export const TableRow: FC<TableRowProps> = (props) => {
 
       {/* 值输入列 */}
       <td>
-        <div className={`etableInputDiv ${type || ''}`}>
+        <div className={`etableInputDiv ${type || ''}`} data-test-id={`table-input-${dataField}`}>
           {renderInput(type, value, config, handleValueChange)}
         </div>
       </td>

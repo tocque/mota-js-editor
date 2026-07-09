@@ -9,8 +9,11 @@ import { useCallback, useState, type FC } from "react";
 import { ContentLeftTab } from "../components/ContentLeftTab";
 import { Table, EditModeSegmented } from "@/components/Table";
 import { useTableMetaEditor } from "@/components/Table/hooks";
-import { useFunctionsDataSuspense, useTableMetaSuspense } from "@/hooks";
-import { functionsService } from "@/services/functions";
+import { useTableMetaSuspense } from "@/hooks";
+import { useResourceSuspense } from "@/hooks/suspense";
+import { projectData } from "@/project/data/projectData";
+import { tableCommands } from "@/project/commands";
+import { notifyCommandResult, notifyError } from "@/utils/notify";
 import type { EditMode, TableAction } from "@/components/Table/types";
 import type { Action } from "@/utils/action";
 
@@ -26,16 +29,16 @@ interface FunctionsPanelContentProps {
 
 const FunctionsPanelContent: FC<FunctionsPanelContentProps> = ({ editMode }) => {
   // 使用 Suspense 版本的 hooks - 数据未就绪时会 throw
-  const [functions] = useFunctionsDataSuspense();
+  const [functions] = useResourceSuspense(projectData.functions());
   const meta = useTableMetaSuspense("functionsComment");
 
   // 统一的变更处理 - 即时保存
   const handleChange = useCallback(async (action: TableAction) => {
     try {
-      functionsService.saveFunctionsData([action as Action]);
-      printf?.("保存成功！");
+      const result = await tableCommands.patchFunctions([action as Action]);
+      notifyCommandResult(result, "保存成功！");
     } catch (err) {
-      printe?.(String(err));
+      notifyError(err);
     }
   }, []);
 
@@ -77,7 +80,7 @@ export const FunctionsPanel: FC = () => {
   );
 
   return (
-    <ContentLeftTab id="left8" title="脚本编辑" actions={actions}>
+    <ContentLeftTab id="left8" testId="panel-functions" title="脚本编辑" actions={actions}>
       <FunctionsPanelContent editMode={editMode} />
     </ContentLeftTab>
   );

@@ -10,11 +10,11 @@
  * - 内存数据源 + 异步落盘
  */
 
-import { produce } from "immer";
 import { FileHandlerManager } from "@/fs/FileHandlerManager";
 import type { Content } from "@/fs";
-import { applyActions, type Action } from "@/utils/action";
+import type { Action } from "@/utils/action";
 import { EnemysDataHandler } from "./EnemysDataHandler";
+import { projectData } from "@/project/data/projectData";
 
 /** 怪物数据文件路径 */
 const ENEMYS_DATA_PATH = "project/enemys.js";
@@ -113,22 +113,12 @@ class EnemyServiceImpl {
       return;
     }
 
-    // 使用 handler.update() 的转换函数模式 + immer
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        // 将 actions 的路径前缀加上怪物 ID
-        const prefixedActions: Action[] = actions.map(([type, path, value]) => [
-          type,
-          `['${id}']${path}`,
-          value,
-        ]);
-
-        applyActions(draft as unknown as Record<string, unknown>, prefixedActions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
+    const prefixedActions: Action[] = actions.map(([type, path, value]) => [
+      type,
+      `['${id}']${path}`,
+      value,
+    ]);
+    void projectData.enemys().patch(prefixedActions);
   }
 
   /**
@@ -139,28 +129,7 @@ class EnemyServiceImpl {
       return;
     }
 
-    this.getDataHandler().update((currentData) =>
-      produce(currentData, (draft) => {
-        applyActions(draft as unknown as Record<string, unknown>, actions);
-
-        // 同步到全局变量（兼容 legacy 代码）
-        this.syncToGlobal(draft);
-      })
-    );
-  }
-
-  /**
-   * 同步数据到全局变量（兼容 legacy 代码）
-   */
-  private syncToGlobal(data: EnemysData): void {
-    if (typeof enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80 !== "undefined") {
-      // 清空并复制新数据
-      const global = enemys_fcae963b_31c9_42b4_b48c_bb48d09f3f80;
-      for (const key of Object.keys(global)) {
-        delete global[key];
-      }
-      Object.assign(global, data);
-    }
+    void projectData.enemys().patch(actions);
   }
 
   /**

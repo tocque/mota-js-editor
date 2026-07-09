@@ -5,10 +5,12 @@
  */
 
 import { useCallback, type FC, type ChangeEvent } from "react";
-import { floorService } from "@/services/floor";
 import { useTowerDataSuspense } from "@/hooks/suspense";
+import { projectData } from "@/project/data/projectData";
+import { setCurrentFloorId } from "@/stores/editorState";
 import { PanelStore, type PanelId } from "@/stores/PanelStore";
 import { EditorStore } from "@/stores/EditorStore";
+import { notifyError } from "@/utils/notify";
 import { MapEditorStore, type BrushMod, type LayerMod } from "./MapEditorStore";
 
 export interface ToolBarProps {
@@ -134,6 +136,7 @@ export const ToolBar: FC<ToolBarProps> = ({
 
       store.pushRecentFloor(floorId);
       store.setCurrentFloorId(newFloorId);
+      setCurrentFloorId(newFloorId);
       onFloorChange?.(newFloorId);
     },
     [floorId, hasUnsavedChanges, store, onFloorChange]
@@ -146,12 +149,15 @@ export const ToolBar: FC<ToolBarProps> = ({
   }, []);
 
   // 保存楼层
-  const handleSaveFloor = useCallback(() => {
-    // 保存操作已经由 floorService 自动处理
-    // 这里只需要重置状态
-    store.setHasUnsavedChanges(false);
-    printf?.("保存成功");
-  }, [store]);
+  const handleSaveFloor = useCallback(async () => {
+    try {
+      await projectData.floor(floorId).waitForIdle();
+      store.setHasUnsavedChanges(false);
+      printf?.("保存成功");
+    } catch (error) {
+      notifyError(error);
+    }
+  }, [floorId, store]);
 
   // 后退楼层
   const handleUndoFloor = useCallback(() => {
@@ -163,6 +169,7 @@ export const ToolBar: FC<ToolBarProps> = ({
     const prevFloorId = store.popRecentFloor();
     if (prevFloorId && prevFloorId !== floorId) {
       store.setCurrentFloorId(prevFloorId);
+      setCurrentFloorId(prevFloorId);
       onFloorChange?.(prevFloorId);
     }
   }, [hasUnsavedChanges, store, floorId, onFloorChange]);
@@ -189,6 +196,7 @@ export const ToolBar: FC<ToolBarProps> = ({
       {/* 面板选择 */}
       <select
         id="editModeSelect"
+        data-test-id="edit-mode-select"
         style={{ fontSize: 12 }}
         value={activePanel}
         onChange={handlePanelChange}
@@ -273,6 +281,7 @@ export const ToolBar: FC<ToolBarProps> = ({
           type="radio"
           name="layerMod"
           value="bgmap"
+          data-test-id="layer-mode-bgmap"
           checked={layerMod === "bgmap"}
           onChange={handleLayerModChange}
         />
@@ -281,6 +290,7 @@ export const ToolBar: FC<ToolBarProps> = ({
           type="radio"
           name="layerMod"
           value="map"
+          data-test-id="layer-mode-map"
           checked={layerMod === "map"}
           onChange={handleLayerModChange}
           style={{ marginLeft: 5 }}
@@ -290,6 +300,7 @@ export const ToolBar: FC<ToolBarProps> = ({
           type="radio"
           name="layerMod"
           value="fgmap"
+          data-test-id="layer-mode-fgmap"
           checked={layerMod === "fgmap"}
           onChange={handleLayerModChange}
           style={{ marginLeft: 5 }}
@@ -334,6 +345,7 @@ export const ToolBar: FC<ToolBarProps> = ({
       {/* 楼层选择 */}
       <select
         id="selectFloor"
+        data-test-id="floor-select"
         value={floorId}
         onChange={handleFloorSelect}
         style={{ marginBottom: 5 }}
